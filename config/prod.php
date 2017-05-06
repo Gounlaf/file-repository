@@ -33,6 +33,20 @@ $app['storage.allowed_types'] = [
     'gif' => 'image/gif',
 ];
 
+$app['storage.flysystem'] = [
+    'default' => [
+        'adapter' => [//Adapter configuration
+            'type' => 'League\Flysystem\Adapter\Local',// Full class name,
+            'config' => [
+                'root' => realpath(__DIR__ . '/../web/storage')
+            ]
+        ],
+        'config' => [//Flysystem configuration
+
+        ]
+    ]
+];
+
 $app['db.options'] = [
     'driver' => 'pdo_sqlite',
     'path'   => __DIR__ . '/../data/database_' . ENV . '.sqlite3',

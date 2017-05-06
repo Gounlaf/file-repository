@@ -28,7 +28,9 @@
         "twig/twig": "^2.1",
         "symfony/twig-bridge": "^3.2",
         "dflydev/doctrine-orm-service-provider": "^2.0",
-        "phpunit/phpunit": "^6.0"
+        "phpunit/phpunit": "^6.0",
+        "league/flysystem": "~1.0",
+        "3nr1c/structure": "0.*"
     },
     "autoload": {
         "psr-0": { "": "src/", "Tests\\": "tests/" }

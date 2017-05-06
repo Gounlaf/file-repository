@@ -14,6 +14,8 @@ $app->register(new \Silex\Provider\DoctrineServiceProvider(), [
 $app->register(new \Provider\DoctrineTablePrefixServiceProvider());
 
 // services
+$app->register(new \Provider\FlysystemServiceProvider());
+
 $app['service.file.serve'] = function () {
     return new \Service\FileServingService();
 };
