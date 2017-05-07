@@ -13,6 +13,15 @@
  * $app['api.key'] = 'XxX'; return $app;
  */
 
+$protocol = 'http';
+
+if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off') {
+    $protocol = 'https';
+}
+
+$app['weburl'] = $protocol . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost:8888');
+
+
 $app['api.key'] = 'api-key-here-for-external-remote-control';
 $app['token.expiration.time'] = '+30 minutes';
 
@@ -42,7 +51,7 @@ $app['storage.flysystem'] = [
             ]
         ],
         'config' => [//Flysystem configuration
-
+            'publicUrl' => $app['weburl']
         ]
     ]
 ];
@@ -51,14 +60,6 @@ $app['db.options'] = [
     'driver' => 'pdo_sqlite',
     'path'   => __DIR__ . '/../data/database_' . ENV . '.sqlite3',
 ];
-
-$protocol = 'http';
-
-if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off') {
-    $protocol = 'https';
-}
-
-$app['weburl'] = $protocol . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost:8888');
 
 if (is_file(__DIR__ . '/prod.custom.php')) {
     require __DIR__ . '/prod.custom.php';

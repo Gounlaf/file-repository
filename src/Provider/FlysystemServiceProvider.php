@@ -4,13 +4,13 @@ namespace Provider;
 
 use \ReflectionClass;
 
+use League\Flysystem;
 use Pimple\Container;
 use Pimple\ServiceProviderInterface;
+use Structure\Structure;
 
 use Exception\Flysystem\ConfigurationException;
-use Exception\Flysystem\InvalidArgumentException;
-use League\Flysystem;
-use Structure\Structure;
+use Flysystem\Plugins\PublicUrl;
 
 class FlysystemServiceProvider implements ServiceProviderInterface
 {
@@ -35,10 +35,14 @@ class FlysystemServiceProvider implements ServiceProviderInterface
             /* @var $adapter \League\Flysystem\AdapterInterface */
             $adapter = $reflection->newInstanceArgs($systemConfig['adapter']['config']);
 
-            $instances[$systemKey] = new Flysystem\Filesystem(
+            $filesystem = new Flysystem\Filesystem(
                 $adapter,
                 $systemConfig['config']
             );
+
+            $filesystem->addPlugin(new PublicUrl());
+
+            $instances[$systemKey] = $filesystem;
         }
 
         $pimple->offsetSet('flysystem.instances', $instances);
