@@ -34,6 +34,7 @@ $app['downloader.mimes'] = [
 ];
 
 // storage settings
+$app['storage.tmppath'] = realpath(__DIR__ . '/../var/tmp');
 $app['storage.path'] = realpath(__DIR__ . '/../web/storage');
 $app['storage.filesize'] = 1024 * 1024 * 300; // 300 kb limit
 $app['storage.allowed_types'] = [
@@ -41,6 +42,7 @@ $app['storage.allowed_types'] = [
     'png' => 'image/png',
     'gif' => 'image/gif',
 ];
+$app['storage.allow_duplicate'] = true;
 
 $app['storage.flysystem'] = [
     'default' => [

@@ -21,7 +21,13 @@ $app['service.file.serve'] = function () {
 };
 
 $app['manager.storage'] = function (Application $app) {
-    return new \Manager\StorageManager($app['storage.path'], $app['url_generator'], $app['weburl']);
+    return new \Manager\StorageManager(
+        $app['flysystem.instances'],
+        $app['storage.tmppath'],
+        $app['storage.path'],
+        $app['url_generator'],
+        $app['weburl']
+    );
 };
 
 $app['manager.token'] = function (Application $app) {
@@ -36,9 +42,11 @@ $app['manager.token'] = function (Application $app) {
 $app['manager.file_registry'] = function (Application $app) {
     return new \Manager\FileRegistry(
         $app['orm.em'],
-        $app['storage.path'],
+        $app['url_generator'],
         $app['manager.storage'],
-        $app['repository.file']
+        $app['repository.file'],
+        $app['storage.allow_duplicate'],
+        $app['weburl']
     );
 };
 

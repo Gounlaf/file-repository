@@ -3,23 +3,24 @@
 namespace Actions\Upload;
 
 use Actions\AbstractBaseAction;
-use Doctrine\ORM\Repository\RepositoryFactory;
 use Exception\ImageManager\FileNameReservedException;
+use Exception\ImageManager\InvalidUrlException;
 use Exception\Upload\DuplicatedContentException;
 use Exception\Upload\UploadException;
 use Manager\Domain\TagManagerInterface;
 use Manager\FileRegistry;
 use Manager\StorageManager;
-use Exception\ImageManager\InvalidUrlException;
 use Model\AllowedMimeTypes;
-use Repository\Domain\FileRepositoryInterface;
+use Model\Entity\File;
 
 /**
  * @package Actions\Upload
  */
 class UploadByHttpActionHandler extends AbstractBaseAction
 {
-    /** @var string $fileName */
+    /**
+     * @var string
+     */
     private $fileName;
 
     /**
@@ -32,61 +33,64 @@ class UploadByHttpActionHandler extends AbstractBaseAction
     private $forceFileName = false;
 
     /**
-     * @var array $tags
+     * @var array
      */
     private $tags = [];
 
     /**
      * Form field name
      *
-     * @var string $fieldName
+     * @var string
      */
-    private $fieldName     = 'upload';
+    private $fieldName = 'upload';
 
     /**
-     * @var int $maxFileSize
+     * @var int
      */
-    private $maxFileSize   = 1024*1024*300; // 300 kb
+    private $maxFileSize = 1024 * 1024 * 300; // 300 kb
 
-    /** @var array $allowedMimes */
+    /**
+     * @var array
+     */
     private $allowedMimes = [];
 
-    /** @var FileRegistry $registry */
+    /**
+     * @var \Manager\FileRegistry
+     */
     private $registry;
 
-    /** @var StorageManager $manager */
+    /**
+     * @var \Manager\StorageManager
+     */
     private $manager;
 
-    /** @var TagManagerInterface $tagManager */
+    /**
+     * @var \Manager\Domain\TagManagerInterface
+     */
     private $tagManager;
-
-    /** @var RepositoryFactory $repository */
-    private $repository;
 
     /**
      * Decides if to be strict about the "move_uploaded_file" or not
      *
-     * @var bool $strictUploadMode
+     * @var bool
      */
     private $strictUploadMode = true;
 
     /**
-     * @param int                     $allowedFileSize
-     * @param AllowedMimeTypes        $allowedMimes
-     * @param StorageManager          $manager
-     * @param FileRegistry            $registry
-     * @param FileRepositoryInterface $repository
-     * @param TagManagerInterface     $tagManager
+     * @param int $allowedFileSize
+     * @param AllowedMimeTypes $allowedMimes
+     * @param StorageManager $manager
+     * @param FileRegistry $registry
+     * @param TagManagerInterface $tagManager
      */
     public function __construct(
         int $allowedFileSize,
         AllowedMimeTypes $allowedMimes,
         StorageManager $manager,
-        FileRegistry   $registry,
-        FileRepositoryInterface $repository,
-        TagManagerInterface     $tagManager
+        FileRegistry $registry,
+        TagManagerInterface $tagManager
     ) {
-        $this->allowedMimes  = array_merge(
+        $this->allowedMimes = array_merge(
             [
                 'jpg' => 'image/jpeg',
                 'png' => 'image/png',
@@ -95,47 +99,26 @@ class UploadByHttpActionHandler extends AbstractBaseAction
             $allowedMimes->all()
         );
 
-        $this->maxFileSize   = $allowedFileSize;
-        $this->manager       = $manager;
-        $this->registry      = $registry;
-        $this->repository    = $repository;
-        $this->tagManager    = $tagManager;
+        $this->maxFileSize = $allowedFileSize;
+        $this->manager     = $manager;
+        $this->registry    = $registry;
+        $this->tagManager  = $tagManager;
     }
 
     /**
      * @param string $fileName
-     * @param bool   $forceFileName
-     * @param array  $tags
+     * @param bool $forceFileName
+     * @param array $tags
      *
      * @return UploadByHttpActionHandler
      */
-    public function setData(
-        string $fileName,
-        bool $forceFileName,
-        array $tags = []
-    ): UploadByHttpActionHandler {
-
+    public function setData(string $fileName, bool $forceFileName, array $tags = []): UploadByHttpActionHandler
+    {
         $this->fileName      = $fileName;
         $this->forceFileName = $forceFileName;
         $this->tags          = $tags;
 
         return $this;
-    }
-
-    /**
-     * @return FileRegistry
-     */
-    protected function getRegistry()
-    {
-        return $this->registry;
-    }
-
-    /**
-     * @return StorageManager
-     */
-    protected function getManager()
-    {
-        return $this->manager;
     }
 
     /**
@@ -147,31 +130,24 @@ class UploadByHttpActionHandler extends AbstractBaseAction
      */
     public function execute(): array
     {
-        $targetPath = $this->getManager()->getUniquePathWhereToStorageFile($this->fileName);
-        $fileName   = $this->fileName;
-
-        if ($this->getRegistry()->existsInRegistry($fileName)) {
-            return [
-                'success' => true,
-                'status' => 'OK',
-                'code'   => 301,
-                'url' => $this->getManager()->getFileUrl(
-                    $this->repository->fetchOneByName($fileName)
-                ),
-            ];
-        }
-
-        if (!$this->getManager()->canWriteFile($this->fileName) && $this->forceFileName) {
-            throw new FileNameReservedException('File name is already reserved, please choose a different one', 2);
-        }
-
         $this->handleValidation();
+
+        $code = 418;
+        $file = null;
+
+        try {
+            $file = $this->handleUpload($_FILES[$this->fieldName]);
+            $code = 200;
+        } catch (DuplicatedContentException $e) {
+            $file = $e->getDuplicate();
+            $code = 301;
+        };
 
         return [
             'success' => true,
-            'status' => 'OK',
-            'code'   => 200,
-            'url'    => $this->handleUpload($targetPath),
+            'status'  => 'OK',
+            'code'    => $code,
+            'url'     => $this->registry->getFileUrl($file)
         ];
     }
 
@@ -180,8 +156,11 @@ class UploadByHttpActionHandler extends AbstractBaseAction
      */
     private function handleValidation()
     {
+        // TODO Replace me with Symfony/Component/Validator/Constraints/File
+        // or Symfony/Component/Validator/Constraints/FileValidator
         if (!isset($_FILES[$this->fieldName])
-            || is_array($_FILES[$this->fieldName]['error'])) {
+            || is_array($_FILES[$this->fieldName]['error'])
+        ) {
             throw new UploadException(
                 'Error during the upload, reasons are two: ' .
                 'The field was not sent, or there was an internal error details: ' .
@@ -192,14 +171,20 @@ class UploadByHttpActionHandler extends AbstractBaseAction
         $uploadedFile = $_FILES[$this->fieldName];
 
         switch ($uploadedFile['error']) {
-            case UPLOAD_ERR_OK: break;
-            case UPLOAD_ERR_NO_FILE: throw new UploadException('No file selected',          UPLOAD_ERR_NO_FILE);
+            case UPLOAD_ERR_OK:
+                break;
+            case UPLOAD_ERR_NO_FILE:
+                throw new UploadException('No file selected', UPLOAD_ERR_NO_FILE);
             case UPLOAD_ERR_INI_SIZE:
-            case UPLOAD_ERR_FORM_SIZE: throw new UploadException('File size limit reached', UPLOAD_ERR_FORM_SIZE);
-            default: throw new UploadException('Unknown error');
+            case UPLOAD_ERR_FORM_SIZE:
+                throw new UploadException('File size limit reached', UPLOAD_ERR_FORM_SIZE);
+            default:
+                throw new UploadException('Unknown error');
         }
 
-        if ('' === $this->getUploadedFileMime($uploadedFile)) {
+        $mimeType = $this->manager->getMimeType($uploadedFile['tmp_name']);
+
+        if (!in_array($mimeType, $this->allowedMimes)) {
             throw new UploadException('Invalid file format.');
         }
 
@@ -209,85 +194,70 @@ class UploadByHttpActionHandler extends AbstractBaseAction
     }
 
     /**
-     * @param array $uploadedFile
-     * @return string
-     */
-    private function getUploadedFileMime($uploadedFile) : string
-    {
-        $finfo = new \finfo(FILEINFO_MIME_TYPE);
-        $mime = $finfo->file($uploadedFile['dst_name'] ?? $uploadedFile['tmp_name']);
-
-        if (array_search($mime, $this->allowedMimes, true)) {
-            return $mime;
-        }
-
-        return '';
-    }
-
-    /**
-     * @param string $targetPath
-     * @return bool
-     */
-    private function moveUploadedFile(string $targetPath)
-    {
-        if ($this->strictUploadMode === false) {
-            return rename($_FILES[$this->fieldName]['tmp_name'], $targetPath);
-        }
-
-        return move_uploaded_file($_FILES[$this->fieldName]['tmp_name'], $targetPath);
-    }
-
-    /**
-     * @param string $targetPath
-     * @throws UploadException
+     * @param array $rawData a $_FILES entry
      *
-     * @return string
+     * @throws \Exception\Upload\UploadException
+     * @throws \Exception\Upload\DuplicatedContentException;
+     *
+     * @return \Model\Entity\File
      */
-    public function handleUpload(string $targetPath)
+    public function handleUpload(array $rawData): File
     {
-        $_FILES[$this->fieldName]['dst_name'] = $targetPath;
+        if (!$this->registry->isDuplicateAllowed()) {
+            $hash = $this->manager->getHashFile($rawData['tmp_name']);
 
-        if (!$this->moveUploadedFile($targetPath)) {
-            throw new UploadException('Cannot save uploaded file. Maybe a disk space problem?');
+            if ($this->registry->existsInRegistryByHash($hash)) {
+                $this->manager->cleanTmpFile($rawData);
+
+                throw new DuplicatedContentException(
+                    'Duplicate content',
+                    $this->registry->getFileByContentHash($hash)
+                );
+            }
         }
+
+        $adapter = $this->manager->chooseAdapter($rawData);
 
         try {
-            $file = $this->getRegistry()->registerByName(
-                $this->fileName,
-                $this->getUploadedFileMime($_FILES[$this->fieldName])
+            $uploadedFile = $this->manager->storeUploadedFile(
+                $adapter,
+                $rawData,
+                $this->strictUploadMode
             );
 
-        } catch (DuplicatedContentException $e) {
-            // return the redirection to the duplicate
-            // instead of saving the same file twice
-            $this->getRegistry()->revertUploadedDuplicate($targetPath);
-            $file = $e->getDuplicate();
-        }
+            $file = $this->registry->register($uploadedFile);
 
-        foreach ($this->tags as $tag) {
-            $this->tagManager->attachTagToFile($tag, $file);
-        }
+            foreach ($this->tags as $tag) {
+                $this->tagManager->attachTagToFile($tag, $file);
+            }
 
-        return $this->getManager()->getFileUrl($file);
+            return $file;
+        } catch (UploadException $e) {
+            throw $e;
+        }
     }
 
     /**
      * @param boolean $strictUploadMode
+     *
      * @return UploadByHttpActionHandler
      */
     public function setStrictUploadMode(bool $strictUploadMode): UploadByHttpActionHandler
     {
         $this->strictUploadMode = $strictUploadMode;
+
         return $this;
     }
 
     /**
      * @param array $allowedMimes
+     *
      * @return UploadByHttpActionHandler
      */
-    public function setAllowedMimes(array $allowedMimes)
+    public function setAllowedMimes(array $allowedMimes): UploadByHttpActionHandler
     {
         $this->allowedMimes = $allowedMimes;
+
         return $this;
     }
 }

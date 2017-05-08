@@ -28,20 +28,22 @@ class UploadController extends AbstractBaseController implements UploadControlle
     /**
      * @return JsonResponse|Response
      */
-    public function uploadAction() : Response
+    public function uploadAction(): Response
     {
+        $container = $this->getContainer();
+        $request   = $this->getRequest();
+
         $action = new UploadByHttpActionHandler(
-            $this->getContainer()->offsetGet('storage.filesize'),
+            $container->offsetGet('storage.filesize'),
             $this->getAllowedMimes(),
-            $this->getContainer()->offsetGet('manager.storage'),
-            $this->getContainer()->offsetGet('manager.file_registry'),
-            $this->getContainer()->offsetGet('repository.file'),
-            $this->getContainer()->offsetGet('manager.tag')
+            $container->offsetGet('manager.storage'),
+            $container->offsetGet('manager.file_registry'),
+            $container->offsetGet('manager.tag')
         );
 
         $action->setData(
-            (string)$this->getRequest()->get('file_name'),
-            (bool)$this->getRequest()->get('file_overwrite'),
+            (string)$request->get('file_name'),
+            (bool)$request->get('file_overwrite'),
             $this->getTags()
         );
 
@@ -50,10 +52,9 @@ class UploadController extends AbstractBaseController implements UploadControlle
 
         $result = $action->execute();
 
-        if ($this->getRequest()->get('back_url') && $result['success'] ?? false) {
-
+        if ($request->get('back_url') && $result['success'] ?? false) {
             return new RedirectResponse(
-                $this->getRedirectUrl((string)$this->getRequest()->get('back_url'), $result)
+                $this->getRedirectUrl((string)$request->get('back_url'), $result)
             );
         }
 
@@ -104,8 +105,8 @@ class UploadController extends AbstractBaseController implements UploadControlle
     public function showFormAction(): string
     {
         return $this->getRenderer()->render('@app/FileUpload.html.twig', [
-            'tokenId' => $this->getRequest()->get('_token'),
-            'backUrl' => (string)$this->getRequest()->get('back_url'),
+            'tokenId'          => $this->getRequest()->get('_token'),
+            'backUrl'          => (string)$this->getRequest()->get('back_url'),
             'allowedMimeTypes' => $this->getAllowedMimes()->toString(),
         ]);
     }
@@ -113,7 +114,7 @@ class UploadController extends AbstractBaseController implements UploadControlle
     /**
      * @inheritdoc
      */
-    public function supportsProtocol(string $protocolName) : bool
+    public function supportsProtocol(string $protocolName): bool
     {
         return in_array($protocolName, ['http', 'https']);
     }
@@ -132,11 +133,13 @@ class UploadController extends AbstractBaseController implements UploadControlle
 
     /**
      * @param boolean $strictUploadMode
+     *
      * @return UploadController
      */
     public function setStrictUploadMode(bool $strictUploadMode): UploadController
     {
         $this->strictUploadMode = $strictUploadMode;
+
         return $this;
     }
 
@@ -150,11 +153,13 @@ class UploadController extends AbstractBaseController implements UploadControlle
 
     /**
      * @param array $allowedMimeTypes
+     *
      * @return UploadController
      */
     public function setAllowedMimeTypes(array $allowedMimeTypes)
     {
         $this->allowedMimeTypes = $allowedMimeTypes;
+
         return $this;
     }
 }

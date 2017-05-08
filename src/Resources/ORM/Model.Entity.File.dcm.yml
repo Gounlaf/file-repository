@@ -6,23 +6,39 @@ Model\Entity\File:
             type: integer
             generator:
                 strategy: IDENTITY
-
     fields:
         fileName:
             type: string
-            length: 128
-
+            length: 255
+            nullable: false
+        uuid:
+            type: string
+            length: 36
+            nullable: false
+        publicId:
+            type: string
+            nullable: false
+            length: 271
         contentHash:
             type: string
-            length: 32
-
+            length: 128
+            nullable: false
         dateAdded:
             type: datetime
-
+            nullable: false
         mimeType:
             type: string
-            length: 48
-
+            length: 127
+            nullable: true
+        adapterName:
+            type: string
+            nullable: false
+        path:
+            type: string
+            nullable: false
+        size:
+            type: bigint
+            nullable: false
     manyToMany:
         tags:
             targetEntity: Model\Entity\Tag
