@@ -2,6 +2,10 @@
 
 namespace Domain\Service;
 
+use Symfony\Component\HttpFoundation\Response;
+
+use Model\Entity\File;
+
 /**
  * Outputs the file to the web browser
  * -----------------------------------
@@ -13,30 +17,5 @@ namespace Domain\Service;
  */
 interface FileServingServiceInterface
 {
-    /**
-     * Create a closure that will output self to the browser
-     *
-     * @param string $filePath
-     * @return \Closure
-     */
-    public function buildClosure(string $filePath): \Closure;
-
-    /**
-     * Basing on the headers passed from browser decide if we are going
-     * to stream a new file, or just return ETag information
-     *
-     * @param string $filePath
-     * @param $modifiedSince
-     * @param $noneMatch
-     * @return bool
-     */
-    public function shouldServe(string $filePath, $modifiedSince, $noneMatch): bool;
-
-    /**
-     * Output headers to serve
-     *
-     * @param string $filePath
-     * @return array
-     */
-    public function buildOutputHeaders(string $filePath): array;
+    public function buildResponse(File $file): Response;
 }

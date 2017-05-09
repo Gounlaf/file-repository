@@ -16,10 +16,6 @@ $app->register(new \Provider\DoctrineTablePrefixServiceProvider());
 // services
 $app->register(new \Provider\FlysystemServiceProvider());
 
-$app['service.file.serve'] = function () {
-    return new \Service\FileServingService();
-};
-
 $app['manager.storage'] = function (Application $app) {
     return new \Manager\StorageManager(
         $app['flysystem.instances'],
@@ -28,6 +24,10 @@ $app['manager.storage'] = function (Application $app) {
         $app['url_generator'],
         $app['weburl']
     );
+};
+
+$app['service.file.serve'] = function (Application $app) {
+    return new \Service\FileServingService($app['manager.storage']);
 };
 
 $app['manager.token'] = function (Application $app) {

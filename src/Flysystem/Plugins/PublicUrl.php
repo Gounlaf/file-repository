@@ -9,6 +9,8 @@ use Exception\Flysystem\InvalidArgumentException;
 
 class PublicUrl extends AbstractPlugin
 {
+    protected $publicUrl = '';
+
     /**
      * @inheritdoc
      *
@@ -26,6 +28,11 @@ class PublicUrl extends AbstractPlugin
         }
 
         parent::setFilesystem($filesystem);
+
+        /* @var $config \League\Flysystem\Config */
+        $config = $this->filesystem->getConfig();
+
+        $this->publicUrl = $config->get('publicUrl', '');
     }
 
     /**
@@ -41,9 +48,6 @@ class PublicUrl extends AbstractPlugin
      */
     public function handle(): string
     {
-        /* @var $config \League\Flysystem\Config */
-        $config = $this->filesystem->getConfig();
-
-        return $config->get('publicUrl', '');
+        return $this->publicUrl;
     }
 }

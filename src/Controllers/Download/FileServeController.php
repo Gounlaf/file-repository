@@ -2,15 +2,14 @@
 
 namespace Controllers\Download;
 
-use Controllers\AbstractBaseController;
-use Domain\Service\FileServingServiceInterface;
-use Manager\Domain\TokenManagerInterface;
-use Manager\StorageManager;
-use Symfony\Component\HttpFoundation\File\Exception\FileNotFoundException;
+use Doctrine\ORM\EntityNotFoundException;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+
+use Controllers\AbstractBaseController;
+use Manager\Domain\TokenManagerInterface;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * @package Controllers\Upload
@@ -31,53 +30,30 @@ class FileServeController extends AbstractBaseController
     }
 
     /**
+     * TODO: Replace $imageName with "filePublicId"
+     *
      * @param string|null $imageName
+     *
      * @return string
      */
     public function downloadAction($imageName = null)
     {
-        /**
-         * @var StorageManager $manager
-         * @var FileServingServiceInterface $fileServe
-         */
-        $manager = $this->getContainer()->offsetGet('manager.storage');
-        $fileServe = $this->getContainer()->offsetGet('service.file.serve');
+        // TODO: Manage case where there is "image_file_url" in request (don't found yet when it happens)
+        $container = $this->getContainer();
+
+        /** @var $fileServe \Domain\Service\FileServingServiceInterface */
+        $fileServe = $container->offsetGet('service.file.serve');
+        /** @var $registry \Repository\FileRepository */
+        $registry = $container->offsetGet('repository.file');
 
         try {
-            // image_file_url is used to get a file that was submitted using a full external URL
-            // instead of file name, using this method we are able to detect if given URL
-            // was already mirrored/cached :-)
-            $requestedFile = $this->getRequest()->get('image_file_url');
-            $storagePath = $requestedFile
-                ? $manager->getPathWhereToStoreTheFile($requestedFile)
-                : $manager->assertGetStoragePathForFile($imageName);
-
-        } catch (FileNotFoundException $e) {
-            $storagePath = '';
+            return $fileServe->buildResponse($registry->getFileByPublicId($imageName));
+        } catch (EntityNotFoundException $e) {
+            return JsonResponse::create([
+                'success' => false,
+                'code'    => 404,
+                'message' => 'File not found in the registry',
+            ], Response::HTTP_NOT_FOUND);
         }
-
-        if ($storagePath !== '' && is_file($storagePath)) {
-            $shouldServe = $fileServe->shouldServe(
-                $storagePath,
-                $_SERVER['HTTP_IF_MODIFIED_SINCE'] ?? null,
-                $_SERVER['HTTP_IF_NONE_MATCH'] ?? null
-            );
-
-            if ($shouldServe) {
-                return new StreamedResponse(
-                    $fileServe->buildClosure($storagePath),
-                    200,
-                    $fileServe->buildOutputHeaders($storagePath)
-                );
-            }
-
-            return new Response('', 304);
-        }
-
-        return new JsonResponse([
-            'success' => false,
-            'code'    => 404,
-            'message' => 'Image not found in the registry',
-        ], 404);
     }
 }

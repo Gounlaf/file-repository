@@ -3,6 +3,7 @@
 namespace Repository;
 
 use Doctrine\ORM\EntityManager;
+use Doctrine\ORM\EntityNotFoundException;
 use Manager\StorageManager;
 use Model\Entity\File;
 use Repository\Domain\FileRepositoryInterface;
@@ -33,9 +34,9 @@ class FileRepository implements FileRepositoryInterface
     }
 
     /**
-     * @inheritdoc
+     * @inheritDoc
      */
-    public function fetchOneByName(string $name)
+    public function fetchOneByName(string $name): File
     {
         $name = $this->storageManager->getStorageFileName($name);
 
@@ -44,7 +45,7 @@ class FileRepository implements FileRepositoryInterface
     }
 
     /**
-     * @inheritdoc
+     * @inheritDoc
      */
     public function findByQuery(array $tags, string $searchQuery = '', int $limit = 50, int $offset = 0): array
     {
@@ -86,11 +87,27 @@ class FileRepository implements FileRepositoryInterface
     }
 
     /**
-     * @inheritdoc
+     * @inheritDoc
      */
-    public function getFileByContentHash(string $hash)
+    public function getFileByContentHash(string $hash): File
     {
         return $this->em->getRepository(File::class)
             ->findOneBy(['contentHash' => $hash]);
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function getFileByPublicId(string $publicId): File
+    {
+        /** @var $file \Model\Entity\File */
+        $file = $this->em->getRepository(File::class)
+            ->findOneBy(['publicId' => $publicId]);
+
+        if (null === $file) {
+            throw new EntityNotFoundException();
+        }
+
+        return $file;
     }
 }

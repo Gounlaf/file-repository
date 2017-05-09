@@ -11,15 +11,16 @@ interface FileRepositoryInterface
 {
     /**
      * @param string $name File name or URL address
+     *
      * @return File|null
      */
-    public function fetchOneByName(string $name);
+    public function fetchOneByName(string $name): File;
 
     /**
-     * @param array  $tags
+     * @param array $tags
      * @param string $searchQuery
-     * @param int    $limit
-     * @param int    $offset
+     * @param int $limit
+     * @param int $offset
      *
      * @return array
      */
@@ -27,7 +28,20 @@ interface FileRepositoryInterface
 
     /**
      * @param string $hash
-     * @return File
+     *
+     * @return \Model\Entity\File|null
      */
-    public function getFileByContentHash(string $hash);
+    public function getFileByContentHash(string $hash): File;
+
+    /**
+     * Retrieve a File entity by it's public id. File must exist, otherwise an
+     * {@Doctrine\ORM\EntityNotFoundException} is thrown
+     *
+     * @param string $publicId
+     *
+     * @return \Model\Entity\File
+     *
+     * @throws \Doctrine\ORM\EntityNotFoundException
+     */
+    public function getFileByPublicId(string $publicId): File;
 }

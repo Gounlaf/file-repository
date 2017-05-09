@@ -10,6 +10,7 @@ use Pimple\ServiceProviderInterface;
 use Structure\Structure;
 
 use Exception\Flysystem\ConfigurationException;
+use Flysystem\Plugins\IsLocal;
 use Flysystem\Plugins\PublicUrl;
 
 class FlysystemServiceProvider implements ServiceProviderInterface
@@ -40,7 +41,8 @@ class FlysystemServiceProvider implements ServiceProviderInterface
                 $systemConfig['config']
             );
 
-            $filesystem->addPlugin(new PublicUrl());
+            $filesystem->addPlugin(new PublicUrl())
+                ->addPlugin(new IsLocal());
 
             $instances[$systemKey] = $filesystem;
         }
