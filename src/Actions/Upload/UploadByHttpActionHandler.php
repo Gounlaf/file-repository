@@ -9,7 +9,6 @@ use Exception\Upload\UploadException;
 use Manager\Domain\TagManagerInterface;
 use Manager\FileRegistry;
 use Manager\StorageManager;
-use Model\AllowedMimeTypes;
 use Model\Entity\File;
 
 /**
@@ -55,26 +54,15 @@ class UploadByHttpActionHandler extends AbstractUploadActionHandler
      * @param \Manager\StorageManager $manager
      * @param \Manager\FileRegistry $registry
      * @param \Manager\Domain\TagManagerInterface $tagManager
-     * @param \Model\AllowedMimeTypes $allowedMimes
      * @param int $allowedFileSize
      */
     public function __construct(
         StorageManager $manager,
         FileRegistry $registry,
         TagManagerInterface $tagManager,
-        AllowedMimeTypes $allowedMimes,
         int $allowedFileSize
     ) {
         parent::__construct($manager, $registry, $tagManager);
-
-        $this->allowedMimes = array_merge(
-            [
-                'jpg' => 'image/jpeg',
-                'png' => 'image/png',
-                'gif' => 'image/gif',
-            ],
-            $allowedMimes->all()
-        );
 
         $this->maxFileSize = $allowedFileSize;
     }
@@ -86,7 +74,10 @@ class UploadByHttpActionHandler extends AbstractUploadActionHandler
      *
      * @return UploadByHttpActionHandler
      */
-    public function setData(string $fileName, array $tags = [], bool $forceFileName = false): UploadByHttpActionHandler
+    public function setData(
+        string $fileName,
+        array $tags = [],
+        bool $forceFileName = false): UploadByHttpActionHandler
     {
         parent::setData($fileName, $tags);
 

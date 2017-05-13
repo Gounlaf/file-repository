@@ -2,14 +2,15 @@
 
 namespace Controllers\Upload;
 
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\RedirectResponse;
+use Symfony\Component\HttpFoundation\Response;
+
 use Actions\Upload\UploadByHttpActionHandler;
 use Controllers\AbstractBaseController;
 use Model\AllowedMimeTypes;
 use Model\Entity\AdminToken;
 use Model\Permissions\Roles;
-use Symfony\Component\HttpFoundation\JsonResponse;
-use Symfony\Component\HttpFoundation\RedirectResponse;
-use Symfony\Component\HttpFoundation\Response;
 
 /**
  * HTTP/HTTPS handler
@@ -19,11 +20,17 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class UploadController extends AbstractBaseController implements UploadControllerInterface
 {
-    /** @var bool $strictUploadMode */
+    /**
+     * @var bool
+     */
     private $strictUploadMode = true;
 
-    /** @var array $allowedMimeTypes */
-    private $allowedMimeTypes = [];
+    /**
+     * @var array
+     *
+     * Don't get this property directly; use getter instead
+     */
+    private $allowedMimeTypes = null;
 
     /**
      * @return JsonResponse|Response
@@ -37,7 +44,6 @@ class UploadController extends AbstractBaseController implements UploadControlle
             $container->offsetGet('manager.storage'),
             $container->offsetGet('manager.file_registry'),
             $container->offsetGet('manager.tag'),
-            $this->getAllowedMimes(),
             $container->offsetGet('storage.filesize')
         );
 
@@ -49,7 +55,7 @@ class UploadController extends AbstractBaseController implements UploadControlle
         );
 
         $action->setStrictUploadMode($this->isStrictUploadMode());
-        $action->setAllowedMimes($this->allowedMimeTypes);
+        $action->setAllowedMimes($this->getAllowedMimes());
 
         $result = $action->execute();
 
@@ -78,14 +84,18 @@ class UploadController extends AbstractBaseController implements UploadControlle
     }
 
     /**
-     * @return AllowedMimeTypes
+     * @return array
      */
     private function getAllowedMimes()
     {
-        return new AllowedMimeTypes(
+        if (null !== $this->allowedMimeTypes) {
+            return $this->allowedMimeTypes;
+        }
+
+        return (new AllowedMimeTypes(
             $this->getContainer()->offsetGet('storage.allowed_types'),
             $this->getToken()->getAllowedMimeTypes()
-        );
+        ))->all();
     }
 
     /**
@@ -153,11 +163,11 @@ class UploadController extends AbstractBaseController implements UploadControlle
     }
 
     /**
-     * @param array $allowedMimeTypes
+     * @param array|null $allowedMimeTypes
      *
      * @return UploadController
      */
-    public function setAllowedMimeTypes(array $allowedMimeTypes)
+    public function setAllowedMimeTypes($allowedMimeTypes): UploadController
     {
         $this->allowedMimeTypes = $allowedMimeTypes;
 
