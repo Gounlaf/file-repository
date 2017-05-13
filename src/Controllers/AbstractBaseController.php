@@ -2,16 +2,15 @@
 
 namespace Controllers;
 
+use Silex\Application;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Security\Core\Exception\AccessDeniedException;
+use Symfony\Component\Serializer\SerializerInterface;
+
 use Actions\AbstractBaseAction;
 use Manager\Domain\TokenManagerInterface;
 use Model\Entity\AdminToken;
-use Model\Entity\Token;
 use Repository\Domain\TokenRepositoryInterface;
-use Silex\Application;
-use SimpleBus\Message\Bus\Middleware\MessageBusSupportingMiddleware;
-use Symfony\Component\HttpFoundation\File\Exception\AccessDeniedException;
-use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\Serializer\SerializerInterface;
 
 /**
  * @package Controllers
@@ -35,24 +34,26 @@ abstract class AbstractBaseController
 
     private $payload;
 
-    /** @var Token|null */
+    /**
+     * @var \Model\Entity\Token|null
+     */
     private $token;
 
     /**
      * @param Application $app
-     * @param bool        $isInternalRequest
+     * @param bool $isInternalRequest
      */
     public function __construct(Application $app, bool $isInternalRequest = false)
     {
-        $this->container  = $app;
-        $this->request    = $app['request_stack']->getCurrentRequest();
+        $this->container = $app;
+        $this->request   = $app['request_stack']->getCurrentRequest();
         $this->setIsInternalRequest($isInternalRequest);
 
         $this->assertValidateAccessRights($this->request, $app['manager.token'], $this->getRequiredRoleNames());
     }
 
     /**
-     * @return Token|null
+     * @return \Model\Entity\Token|null
      */
     public function getToken()
     {
@@ -63,8 +64,10 @@ abstract class AbstractBaseController
     {
         if ($this->payload === null) {
             /** @var SerializerInterface $serializer */
-            $serializer = $this->getContainer()->offsetGet('serializer');
-            $this->payload = $serializer->deserialize($this->getRequest()->getContent(false), $this->getPayloadClassName(), 'json');
+            $serializer    = $this->getContainer()->offsetGet('serializer');
+            $this->payload = $serializer->deserialize(
+                $this->getRequest()->getContent(false),
+                $this->getPayloadClassName(), 'json');
         }
 
         return $this->payload;
@@ -96,9 +99,9 @@ abstract class AbstractBaseController
     }
 
     /**
-     * @param Request               $request
-     * @param TokenManagerInterface $tokenManager
-     * @param array                 $requiredRoles
+     * @param \Symfony\Component\HttpFoundation\Request $request
+     * @param \Manager\Domain\TokenManagerInterface $tokenManager
+     * @param array $requiredRoles
      */
     public function assertValidateAccessRights(
         Request $request,
@@ -109,30 +112,33 @@ abstract class AbstractBaseController
 
         if ($this->isInternalRequest === true || $tokenManager->isAdminToken($inputToken)) {
             $this->token = (new AdminToken())->setId($inputToken);
+
             return;
         }
 
         if (!$tokenManager->isTokenValid($inputToken, $requiredRoles)) {
-            throw new \Symfony\Component\Security\Core\Exception\AccessDeniedException('Access denied, please verify the "_token" parameter');
+            throw new AccessDeniedException('Access denied, please verify the "_token" parameter');
         }
 
         /** @var TokenRepositoryInterface $repository */
-        $repository = $this->getContainer()->offsetGet('repository.token');
+        $repository  = $this->getContainer()->offsetGet('repository.token');
         $this->token = $repository->getTokenById($inputToken);
     }
 
     /**
      * @param bool $isInternalRequest
+     *
      * @return $this
      */
     public function setIsInternalRequest(bool $isInternalRequest)
     {
         $this->isInternalRequest = $isInternalRequest;
+
         return $this;
     }
 
     /**
-     * @return Application
+     * @return \Silex\Application
      */
     public function getContainer()
     {
@@ -140,7 +146,7 @@ abstract class AbstractBaseController
     }
 
     /**
-     * @return Request
+     * @return \Symfony\Component\HttpFoundation\Request
      */
     public function getRequest()
     {
@@ -148,18 +154,21 @@ abstract class AbstractBaseController
     }
 
     /**
-     * @param Request $request
-     * @return AbstractBaseController
+     * @param \Symfony\Component\HttpFoundation\Request $request
+     *
+     * @return $this
      */
     public function setRequest($request)
     {
         $this->request = $request;
+
         return $this;
     }
 
     /**
-     * @param AbstractBaseAction $action
-     * @return AbstractBaseAction
+     * @param \Actions\AbstractBaseAction $action
+     *
+     * @return \Actions\AbstractBaseAction
      */
     protected function getAction(AbstractBaseAction $action)
     {

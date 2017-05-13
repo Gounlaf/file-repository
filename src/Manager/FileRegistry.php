@@ -2,6 +2,7 @@
 
 namespace Manager;
 
+use \DateTime;
 use \RuntimeException;
 
 use Doctrine\ORM\EntityManager;
@@ -200,7 +201,7 @@ class FileRegistry
      */
     public function register(File $file): File
     {
-        $file->setDateAdded(new \DateTime());
+        $file->setDateAdded(new DateTime());
         $file->setPublicId($this->generatePublicId($file));
 
         // persist and flush changes
