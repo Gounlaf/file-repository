@@ -6,7 +6,7 @@ use \DateTime;
 use \RuntimeException;
 
 use Doctrine\ORM\EntityManager;
-//use SebastianBergmann\GlobalState\RuntimeException;
+use Stringy\Stringy;
 use Symfony\Component\Filesystem\Exception\FileNotFoundException;
 use Symfony\Component\Routing\Generator\UrlGenerator;
 
@@ -127,7 +127,19 @@ class FileRegistry
      */
     public function generatePublicId(File $file): string
     {
-        return $file->getUuid()->getMostSignificantBitsHex() . '-' . $file->getFileName();
+        $info = new \SplFileInfo($file->getFileName());
+        $ext = $info->getExtension();
+
+        if (!empty($ext)) {
+            $ext = '.' . $ext;
+        }
+
+        return (string) Stringy::create($info->getBasename($ext))
+            ->slugify()
+            ->append($ext)
+            ->toLowerCase()
+            ->prepend('-')
+            ->prepend($file->getUuid()->getMostSignificantBitsHex());
     }
 
     /**
