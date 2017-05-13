@@ -91,10 +91,14 @@ class AddByUrlActionHandler extends AbstractUploadActionHandler
 
     /**
      * @inheritDoc
+     *
+     * @throws \Exception\Upload\InvalidUrlException
      */
     protected function handleValidation(): array
     {
         $this->assertValidUrl($this->source);
+
+        return array();
     }
 
     /**
