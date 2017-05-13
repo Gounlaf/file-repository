@@ -2,6 +2,8 @@
 
 namespace Model;
 
+use Psr\Http\Message\StreamInterface;
+
 /**
  * Stores information about just saved/uploaded file
  * the data is immutable
@@ -11,34 +13,51 @@ namespace Model;
 class SavedFile
 {
     /**
-     * @var string $fileName
+     * @var \Psr\Http\Message\StreamInterface
      */
-    private $fileName;
+    protected $stream;
 
     /**
-     * @var string $fileMimeType
+     * @var string
      */
-    private $fileMimeType;
+    protected $mime;
 
-    public function __construct(string $fileName, string $fileMime)
+    /**
+     * @var int
+     */
+    protected $size;
+
+    public function __construct(
+        StreamInterface $stream,
+        string $mime,
+        int $size
+    ) {
+        $this->stream = $stream;
+        $this->mime   = $mime;
+        $this->size   = $size;
+    }
+
+    /**
+     * @return \Psr\Http\Message\StreamInterface
+     */
+    public function getStream(): StreamInterface
     {
-        $this->fileName = $fileName;
-        $this->fileMimeType = $fileMime;
+        return $this->stream;
     }
 
     /**
      * @return string
      */
-    public function getFileName()
+    public function getMime(): string
     {
-        return $this->fileName;
+        return $this->mime;
     }
 
     /**
-     * @return string
+     * @return int
      */
-    public function getFileMimeType()
+    public function getSize(): int
     {
-        return $this->fileMimeType;
+        return $this->size;
     }
 }

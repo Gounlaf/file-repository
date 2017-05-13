@@ -2,14 +2,8 @@
 
 namespace Actions\Upload;
 
-use Exception\Upload\UploadException;
-use GuzzleHttp\Client;
-
 use Exception\Upload\DuplicatedContentException;
 use Exception\Upload\InvalidUrlException;
-use Manager\Domain\TagManagerInterface;
-use Manager\FileRegistry;
-use Manager\StorageManager;
 use Model\Entity\File;
 
 /**
@@ -17,21 +11,6 @@ use Model\Entity\File;
  */
 class AddByUrlActionHandler extends AbstractUploadActionHandler
 {
-    /**
-     * AddByUrlActionHandler constructor.
-     *
-     * @param \Manager\StorageManager $manager
-     * @param \Manager\FileRegistry $registry
-     * @param \Manager\Domain\TagManagerInterface $tagManager
-     */
-    public function __construct(
-        StorageManager $manager,
-        FileRegistry $registry,
-        TagManagerInterface $tagManager
-    ) {
-        parent::__construct($manager, $registry, $tagManager);
-    }
-
     /**
      * @param string $fileUrl
      * @param array $tags
@@ -51,13 +30,13 @@ class AddByUrlActionHandler extends AbstractUploadActionHandler
      */
     public function execute(): array
     {
-        $validationData = $this->handleValidation();
+        $this->handleValidation();
 
         $code = 418;
         $file = null;
 
         try {
-            $file = $this->handleDownload($this->source, $validationData);
+            $file = $this->handleDownload($this->source);
             $code = 200;
         } catch (DuplicatedContentException $e) {
             $file = $e->getDuplicate();
@@ -72,7 +51,15 @@ class AddByUrlActionHandler extends AbstractUploadActionHandler
         ];
     }
 
-    protected function handleDownload(string $url, array $validationData): File
+    /**
+     * @param string $url
+     *
+     * @return \Model\Entity\File
+     *
+     * @throws \Exception\Upload\UploadException
+     * @throws \Exception\Flysystem\SystemNotFoundException
+     */
+    protected function handleDownload(string $url): File
     {
         if (!$this->registry->isDuplicateAllowed()) {
             // "Low verification": rely on file content
@@ -88,23 +75,18 @@ class AddByUrlActionHandler extends AbstractUploadActionHandler
 
         $adapter = $this->manager->chooseAdapterFromUrl($url);
 
-        try {
-            $uploadedFile = $this->manager->storeFileFromRemoteSource(
-                $adapter,
-                $url,
-                $validationData
-            );
+        $uploadedFile = $this->manager->storeFileFromRemoteSource(
+            $adapter,
+            $url
+        );
 
-            $file = $this->registry->register($uploadedFile);
+        $file = $this->registry->register($uploadedFile);
 
-            foreach ($this->tags as $tag) {
-                $this->tagManager->attachTagToFile($tag, $file);
-            }
-
-            return $file;
-        } catch (UploadException $e) {
-            throw $e;
+        foreach ($this->tags as $tag) {
+            $this->tagManager->attachTagToFile($tag, $file);
         }
+
+        return $file;
     }
 
     /**
@@ -113,21 +95,6 @@ class AddByUrlActionHandler extends AbstractUploadActionHandler
     protected function handleValidation(): array
     {
         $this->assertValidUrl($this->source);
-
-        $targetInfo = (new Client())->head($this->source, [
-            'allow_redirects' => true,
-        ]);
-
-        if (200 !== $targetInfo->getStatusCode()) {
-            throw new InvalidUrlException(sprintf(
-                'Cannot retrieve remote content; status code: %d',
-                $targetInfo->getStatusCode()
-            ), 500);
-        }
-
-        return [
-            'headResult' => $targetInfo
-        ];
     }
 
     /**

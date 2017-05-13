@@ -2,12 +2,19 @@
 
 namespace Service;
 
-use Exception\HttpImageDownloader\FileSizeLimitExceededException;
-use Exception\HttpImageDownloader\HTTPPermissionsException;
-use Exception\HttpImageDownloader\InvalidFileTypeException;
+use Exception\HttpDownloader\HttpException;
+use \finfo;
+
+use Exception\HttpDownloader\FileSizeLimitExceededException;
+use Exception\HttpDownloader\HTTPPermissionsException;
+use Exception\HttpDownloader\InvalidFileTypeException;
+use GuzzleHttp\Client;
 use GuzzleHttp\Psr7\Stream;
-use Model\SavedFile;
+use GuzzleHttp\Psr7\StreamWrapper;
+use Psr\Http\Message\ResponseInterface;
 use Symfony\Component\Debug\Exception\ContextErrorException;
+
+use Model\SavedFile;
 
 /**
  * HTTP Client for files downloading
@@ -17,143 +24,134 @@ use Symfony\Component\Debug\Exception\ContextErrorException;
 class HttpFileDownloader
 {
     /**
-     * @var int $maxFileSizeLimit
+     * @var int
      */
-    private $maxFileSizeLimit = (1024 * 1024 * 1024); // megabyte
+    protected $maxFileSizeLimit = (1024 * 1024 * 1024); // megabyte
 
     /**
-     * @var Stream $stream
+     * @var Stream
      */
-    private $stream;
+    protected $stream;
 
     /**
-     * @var resource $_stream
+     * @var resource
      */
-    private $_stream;
+    protected $_stream;
 
     /**
-     * @var string[] $allowedMimes
+     * @var string[]
      */
-    private $allowedMimes = [
-        'image/jpeg',
-        'image/png',
-        'image/gif',
-        'image/jpg',
-    ];
+    protected $allowedMimes = [];
+
+    /**
+     * @var \GuzzleHttp\Client
+     */
+    protected $client;
+
+    /**
+     * HttpFileDownloader constructor.
+     *
+     * @param \GuzzleHttp\Client $client
+     * @param array $allowedMimes
+     * @param int $sizeLimit
+     */
+    public function __construct(Client $client, array $allowedMimes, int $sizeLimit)
+    {
+        $this->allowedMimes     = $allowedMimes;
+        $this->maxFileSizeLimit = $sizeLimit;
+
+        $this->client = $client;
+    }
 
     /**
      * @param string $url
      *
-     * @throws FileSizeLimitExceededException
-     * @throws HTTPPermissionsException
-     */
-    public function __construct($url)
-    {
-        try {
-            $this->_stream = fopen($url, 'r', false, stream_context_create([
-                'http' => [
-                    'method' => "GET",
-                    'header' =>
-                        "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8\r\n" .
-                        "accept-encoding: identity\r\n" .
-                        "Accept-language: pl-PL,pl;q=0.8,en-US;q=0.6,en;q=0.4\r\n" .
-                        "upgrade-insecure-requests: 1\r\n" .
-                        "user-agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/48.0.2547.0 Safari/537.36 OPR/35.0.2052.0 (Edition developer)\r\n"
-                ]
-            ]));
-        }
-        catch (ContextErrorException $e) {
-            throw new HTTPPermissionsException($e);
-        }
-
-        $this->stream = new Stream($this->_stream);
-
-        if ($this->stream->getSize() >= $this->getMaxFileSizeLimit()) {
-            throw new FileSizeLimitExceededException($this->getMaxFileSizeLimit());
-        }
-    }
-
-    /**
-     * @param string $targetPath
-     * @return SavedFile
-     */
-    public function saveTo($targetPath)
-    {
-        if (!is_dir(dirname($targetPath))) {
-            mkdir($targetPath, 0774, true);
-        }
-
-        $fp = fopen($targetPath, 'w');
-        $iteration = 0;
-        $mime = null;
-
-        while (!$this->stream->eof()) {
-
-            $bufferRead = $this->stream->read(1024);
-
-            if ($iteration === 0) {
-                $mime = $this->assertGetBufferedImageMime($bufferRead, $fp);
-            }
-
-            fwrite($fp, $bufferRead);
-            $this->assertStreamSize($fp, $targetPath);
-
-            $iteration++;
-        }
-
-        fclose($fp);
-        $this->stream->close();
-
-        return new SavedFile($targetPath, $mime);
-    }
-
-    /**
-     * @param \Resource $filePointer
-     * @param string    $targetPath
+     * @return \Model\SavedFile
      *
-     * @throws FileSizeLimitExceededException
+     * @throws \Exception\HttpDownloader\FileSizeLimitExceededException
+     * @throws \Exception\HttpDownloader\HttpException
      */
-    private function assertStreamSize($filePointer, $targetPath)
+    public function retrieveFileFromUrl(string $url)
     {
-        if (filesize($targetPath) >= $this->getMaxFileSizeLimit()) {
-            fclose($filePointer);
-            @unlink($targetPath);
+        $headResponse = $this->client->head($url);
 
-            throw new FileSizeLimitExceededException($this->getMaxFileSizeLimit());
+        $this->assertResponse($headResponse);
+
+        // Server sent Content-Length; we can check file size now
+        if ($headResponse->hasHeader('Content-Length')) {
+            $this->assertSize((int)$headResponse->getHeaderLine('Content-Length'));
         }
+
+        if ($headResponse->hasHeader('Content-Type')) {
+            $this->assertMimeType($headResponse->getHeaderLine('Content-Type'));
+        }
+
+        $getResponse = $this->client->get($url, [
+            'allow_redirects' => true,
+            'sink'            => tmpfile()
+        ]);
+
+        $this->assertResponse($headResponse);
+
+        // Size & mime are checked again with actual download file
+
+        $body = $getResponse->getBody();
+        $size = $body->getSize();
+
+        $this->assertSize($body->getSize());
+
+        $resource = StreamWrapper::getResource($body);
+        fseek($resource, 0);
+        $mime = (new finfo(FILEINFO_MIME_TYPE))->buffer(fread($resource, 1024));
+        fclose($resource);
+
+        $this->assertMimeType($mime);
+
+        return new SavedFile($body, $mime, $size);
     }
 
     /**
-     * @param string $bufferedString
-     * @param resource $stream
+     * @param \Psr\Http\Message\ResponseInterface $response
      *
-     * @throws InvalidFileTypeException
-     * @return string
+     * @throws \Exception\HttpDownloader\HttpException
      */
-    private function assertGetBufferedImageMime($bufferedString, $stream)
+    protected function assertResponse(ResponseInterface $response)
     {
-        $mime = (new \finfo(FILEINFO_MIME))->buffer($bufferedString);
-        $parts = explode(';', (string)$mime);
-
-        $allowedMimes = $this->getAllowedMimes();
-
-        if (!in_array(current($parts), $allowedMimes)) {
-            fclose($stream);
-            $this->stream->close();
-            throw new InvalidFileTypeException(current($parts), $this->getAllowedMimes());
+        if (200 != $response->getStatusCode()) {
+            throw new HttpException(sprintf(
+                'Got http status: %d',
+                $response->getStatusCode()
+            ));
         }
-
-        return $mime;
     }
 
     /**
-     * @param int $maxFileSizeLimit
-     * @return HttpFileDownloader
+     * @param int $fileSize
+     *
+     * @throws \Exception\HttpDownloader\FileSizeLimitExceededException
      */
-    public function setMaxFileSizeLimit(int $maxFileSizeLimit)
+    protected function assertSize(int $fileSize)
     {
-        $this->maxFileSizeLimit = $maxFileSizeLimit;
-        return $this;
+        $allowed = $this->getMaxFileSizeLimit();
+
+        if ($fileSize > $allowed) {
+            throw new FileSizeLimitExceededException($allowed);
+        }
+    }
+
+    /**
+     * @param string $mimeType
+     *
+     * @throws \Exception\HttpDownloader\InvalidFileTypeException
+     */
+    protected function assertMimeType(string $mimeType)
+    {
+        $parts = explode(';', $mimeType);
+
+        $allowed = $this->getAllowedMimes();
+        if (!in_array(current($parts), $allowed)) {
+            throw new InvalidFileTypeException(current($parts), $allowed);
+        }
     }
 
     /**
@@ -165,20 +163,34 @@ class HttpFileDownloader
     }
 
     /**
+     * @param int $maxFileSizeLimit
+     *
+     * @return \Service\HttpFileDownloader
+     */
+    public function setMaxFileSizeLimit(int $maxFileSizeLimit): HttpFileDownloader
+    {
+        $this->maxFileSizeLimit = $maxFileSizeLimit;
+
+        return $this;
+    }
+
+    /**
      * @return string[]
      */
-    public function getAllowedMimes()
+    public function getAllowedMimes(): array
     {
         return $this->allowedMimes;
     }
 
     /**
      * @param \string[] $allowedMimes
-     * @return HttpFileDownloader
+     *
+     * @return \Service\HttpFileDownloader
      */
-    public function setAllowedMimes(array $allowedMimes)
+    public function setAllowedMimes(array $allowedMimes): HttpFileDownloader
     {
         $this->allowedMimes = $allowedMimes;
+
         return $this;
     }
 }

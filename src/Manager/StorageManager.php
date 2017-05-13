@@ -4,7 +4,6 @@ namespace Manager;
 
 use \SplFileInfo;
 
-use GuzzleHttp\Client;
 use GuzzleHttp\Psr7\StreamWrapper;
 use League\Flysystem\FilesystemInterface;
 use League\Flysystem\FileExistsException;
@@ -14,11 +13,13 @@ use Ramsey\Uuid\UuidInterface;
 use Stringy\Stringy;
 use Symfony\Component\Routing\Generator\UrlGenerator;
 
+use Exception\HttpDownloader\HttpDownloaderExceptionInterface;
 use Exception\ImageManager\DirectoryNotFoundException;
 use Exception\Flysystem\FileNotFoundException;
 use Exception\Flysystem\SystemNotFoundException;
 use Exception\Upload\UploadException;
 use Model\Entity\File;
+use Service\HttpFileDownloader;
 
 /**
  * Manages where to put a new file
@@ -30,61 +31,69 @@ use Model\Entity\File;
 class StorageManager
 {
     // TODO Remove me
-    /** @var string $storagePath */
-    private $storagePath;
-
-    /**
-     * @var string Where file are stored temporary, before being moved into final storage
-     */
-    private $tmpPath;
-
     /**
      * @var \Symfony\Component\Routing\Generator\UrlGenerator
      */
-    private $router;
+    protected $router;
 
     /**
-     * @var string
+     * @var \Service\HttpFileDownloader
      */
-    private $webUrl;
+    protected $fileDownloader;
 
     /**
      * @var \League\Flysystem\FilesystemInterface[]
      */
-    private $flysystems;
+    protected $flysystems;
+
+    /**
+     * @var string Where file are stored temporary, before being moved into final storage
+     */
+    protected $tmpPath;
+
+    /** @var string $storagePath */
+    private $storagePath;
 
     /**
      * @var string prefered hash algo (highest sha* available)
      */
-    private $hashAlgo;
+    protected $hashAlgo;
+
+    /**
+     * @var string
+     */
+    protected $webUrl;
 
     /**
      * StorageManager constructor.
      *
+     * @param \Service\HttpFileDownloader
+     * @param \Symfony\Component\Routing\Generator\UrlGenerator $router
      * @param array $flysystems
      * @param string $tmpPath
      * @param string $storagePath
      * @param string $hashAlgo
-     * @param \Symfony\Component\Routing\Generator\UrlGenerator $router
      * @param string $webUrl
      *
      * @throws \Exception\ImageManager\DirectoryNotFoundException
      */
     public function __construct(
+        HttpFileDownloader $fileDownloader,
+        UrlGenerator $router,
         array $flysystems,
         string $tmpPath,
         string $storagePath,
         string $hashAlgo,
-        UrlGenerator $router,
         string $webUrl
     ) {
-        $this->flysystems = $flysystems;
-        $this->tmpPath    = realpath($tmpPath);
-        $this->hashAlgo = $hashAlgo;
+        $this->fileDownloader = $fileDownloader;
+        $this->router         = $router;
+        $this->flysystems     = $flysystems;
+        $this->tmpPath        = realpath($tmpPath);
+        $this->hashAlgo       = $hashAlgo;
 
         // TODO Remove me
         $this->storagePath = realpath($storagePath);
-        $this->router      = $router;
 
         $this->webUrl = $webUrl;
 
@@ -100,6 +109,8 @@ class StorageManager
     }
 
     /**
+     * @deprecated
+     *
      * Escape path, make sure it will not go out of the storagePath
      *
      * @param string $path
@@ -197,8 +208,6 @@ class StorageManager
         while (is_file($this->getPathWhereToStoreTheFile($url))) {
             $url = rand(10000, 99999) . $originalUrl;
         }
-
-        var_dump($url);
 
         return $this->getPathWhereToStoreTheFile($url);
     }
@@ -385,9 +394,10 @@ class StorageManager
     }
 
     /**
+     * @TODO Manage errors
+     *
      * @param string $adapter
      * @param string $url
-     * @param array $validationData
      *
      * @return \Model\Entity\File
      *
@@ -396,15 +406,11 @@ class StorageManager
      */
     public function storeFileFromRemoteSource(
         string $adapter,
-        string $url,
-        array $validationData
+        string $url
     ): File {
-        $uuid      = Uuid::uuid4();
+        $uuid = Uuid::uuid4();
 
-        $target = $this->generateRelativePath($uuid);
-
-        $headResult = $validationData['headResult'];
-
+        $target       = $this->generateRelativePath($uuid);
         $originalName = new SplFileInfo($url);
 
         $file = (new File())
@@ -413,34 +419,27 @@ class StorageManager
             ->setAdapterName($adapter)
             ->setPath($target);
 
-        if ($headResult->hasHeader('Content-Length')) {
-            $file->setSize((int) $headResult->getHeaderLine('Content-Length'));
+        try {
+            $downloadedFile = $this->fileDownloader->retrieveFileFromUrl($url);
+        } catch (HttpDownloaderExceptionInterface $e) {
+            throw new UploadException('Cannot save uploaded file', 500, $e);
         }
 
-        if ($headResult->hasHeader('Content-Type')) {
-            $file->setMimeType($headResult->getHeaderLine('Content-Type'));
-        }
+        $stream = StreamWrapper::getResource($downloadedFile->getStream());
+        rewind($stream);
 
         // Can't use ETag if available since it's value is from a "black box":
         // https://en.wikipedia.org/wiki/HTTP_ETag
         // "An ETag is an opaque identifier assigned by a web server to a specific version of a resource found at a URL"
 //        $contentHash = $this->getHashFile($tmpTarget);
 
-        $guzzle = new Client();
-        $response = $guzzle->get($url, [
-            'allow_redirects' => true,
-            'sink' => tmpfile()
-        ]);
-        $stream = StreamWrapper::getResource($response->getBody());
-
-        rewind($stream);
-
         $ctx = hash_init($this->hashAlgo);
         hash_update_stream($ctx, $stream);
         $contentHash = hash_final($ctx);
 
-        $file->setContentHash($contentHash);
-        $file->setSize($response->getBody()->getSize());
+        $file->setContentHash($contentHash)
+            ->setSize($downloadedFile->getSize())
+            ->setMimeType($downloadedFile->getMime());
 
         try {
             if (!$this->getFlysystemForConfigKey($adapter)->writeStream($target, $stream)) {
@@ -574,7 +573,7 @@ class StorageManager
      */
     public function getHashUrl(string $url): string
     {
-        return hash($this->hashAlgo,  $url);
+        return hash($this->hashAlgo, $url);
     }
 
     /**
@@ -600,6 +599,7 @@ class StorageManager
         if ($this->isStoredLocally($file)) {
             /* @var $adapter \League\Flysystem\Adapter\Local */
             $adapter = $flysystem->getAdapter();
+
             return $adapter->getPathPrefix() . $file->getPath();
         }
 
@@ -629,7 +629,7 @@ class StorageManager
     {
         $extension = '.' . $fileInfo->getExtension();
 
-        return (string) Stringy::create($fileInfo->getBasename($extension))
+        return (string)Stringy::create($fileInfo->getBasename($extension))
             ->trim()
             ->collapseWhitespace()
             ->slugify(' ')

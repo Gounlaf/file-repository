@@ -1,8 +1,8 @@
 <?php
 
-namespace Exception\HttpImageDownloader;
+namespace Exception\HttpDownloader;
 
-class HTTPPermissionsException extends \Exception
+class HTTPPermissionsException extends \Exception implements HttpDownloaderExceptionInterface
 {
     public function __construct(\Exception $previous = null)
     {

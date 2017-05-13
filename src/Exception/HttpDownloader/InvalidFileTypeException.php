@@ -1,8 +1,8 @@
 <?php
 
-namespace Exception\HttpImageDownloader;
+namespace Exception\HttpDownloader;
 
-class InvalidFileTypeException extends \Exception
+class InvalidFileTypeException extends \Exception implements HttpDownloaderExceptionInterface
 {
     public function __construct(string $mime, array $allowedMimes, \Exception $previous = null)
     {

@@ -18,11 +18,12 @@ $app->register(new \Provider\FlysystemServiceProvider());
 
 $app['manager.storage'] = function (Application $app) {
     return new \Manager\StorageManager(
+        $app['service.http_file_downloader'],
+        $app['url_generator'],
         $app['flysystem.instances'],
         $app['storage.tmppath'],
         $app['storage.path'],
         $app['storage.hash'],
-        $app['url_generator'],
         $app['weburl']
     );
 };
@@ -90,13 +91,19 @@ $app['versioning'] = function () {
     return new \Service\Versioning();
 };
 
-$app['service.http_file_downloader'] = $app->factory(function () use ($app) {
-    return function (string $url) use ($app) {
-        return (new \Service\HttpFileDownloader($url))
-        ->setAllowedMimes($app['downloader.mimes'])
-        ->setMaxFileSizeLimit($app['downloader.size_limit']);
-    };
-});
+$app['service.http_client'] = function () {
+    return new \GuzzleHttp\Client([
+        'allow_redirects' => true
+    ]);
+};
+
+$app['service.http_file_downloader'] = function (Application $app) {
+    return new \Service\HttpFileDownloader(
+        $app['service.http_client'],
+        $app['downloader.mimes'],
+        $app['downloader.size_limit']
+    );
+};
 
 // controllers
 $app['controller.upload'] = function (Application $app) {
