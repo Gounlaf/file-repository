@@ -2,7 +2,7 @@
 
 namespace Exception\Flysystem;
 
-class ConfigurationException extends \InvalidArgumentException
+class ConfigurationException extends \InvalidArgumentException implements FlysystemExceptionInterface
 {
 
 }
