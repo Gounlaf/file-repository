@@ -2,7 +2,6 @@
 
 namespace Actions\Upload;
 
-use Actions\AbstractBaseAction;
 use Exception\ImageManager\FileNameReservedException;
 use Exception\ImageManager\InvalidUrlException;
 use Exception\Upload\DuplicatedContentException;
@@ -16,13 +15,8 @@ use Model\Entity\File;
 /**
  * @package Actions\Upload
  */
-class UploadByHttpActionHandler extends AbstractBaseAction
+class UploadByHttpActionHandler extends AbstractUploadActionHandler
 {
-    /**
-     * @var string
-     */
-    private $fileName;
-
     /**
      * Force this file to be saved under this
      * file name, don't add any prefix if it already exists
@@ -31,11 +25,6 @@ class UploadByHttpActionHandler extends AbstractBaseAction
      * @var bool $forceFileName
      */
     private $forceFileName = false;
-
-    /**
-     * @var array
-     */
-    private $tags = [];
 
     /**
      * Form field name
@@ -55,21 +44,6 @@ class UploadByHttpActionHandler extends AbstractBaseAction
     private $allowedMimes = [];
 
     /**
-     * @var \Manager\FileRegistry
-     */
-    private $registry;
-
-    /**
-     * @var \Manager\StorageManager
-     */
-    private $manager;
-
-    /**
-     * @var \Manager\Domain\TagManagerInterface
-     */
-    private $tagManager;
-
-    /**
      * Decides if to be strict about the "move_uploaded_file" or not
      *
      * @var bool
@@ -77,19 +51,22 @@ class UploadByHttpActionHandler extends AbstractBaseAction
     private $strictUploadMode = true;
 
     /**
+     *
+     * @param \Manager\StorageManager $manager
+     * @param \Manager\FileRegistry $registry
+     * @param \Manager\Domain\TagManagerInterface $tagManager
+     * @param \Model\AllowedMimeTypes $allowedMimes
      * @param int $allowedFileSize
-     * @param AllowedMimeTypes $allowedMimes
-     * @param StorageManager $manager
-     * @param FileRegistry $registry
-     * @param TagManagerInterface $tagManager
      */
     public function __construct(
-        int $allowedFileSize,
-        AllowedMimeTypes $allowedMimes,
         StorageManager $manager,
         FileRegistry $registry,
-        TagManagerInterface $tagManager
+        TagManagerInterface $tagManager,
+        AllowedMimeTypes $allowedMimes,
+        int $allowedFileSize
     ) {
+        parent::__construct($manager, $registry, $tagManager);
+
         $this->allowedMimes = array_merge(
             [
                 'jpg' => 'image/jpeg',
@@ -100,9 +77,6 @@ class UploadByHttpActionHandler extends AbstractBaseAction
         );
 
         $this->maxFileSize = $allowedFileSize;
-        $this->manager     = $manager;
-        $this->registry    = $registry;
-        $this->tagManager  = $tagManager;
     }
 
     /**
@@ -112,11 +86,11 @@ class UploadByHttpActionHandler extends AbstractBaseAction
      *
      * @return UploadByHttpActionHandler
      */
-    public function setData(string $fileName, bool $forceFileName, array $tags = []): UploadByHttpActionHandler
+    public function setData(string $fileName, array $tags = [], bool $forceFileName = false): UploadByHttpActionHandler
     {
-        $this->fileName      = $fileName;
+        parent::setData($fileName, $tags);
+
         $this->forceFileName = $forceFileName;
-        $this->tags          = $tags;
 
         return $this;
     }
@@ -124,13 +98,14 @@ class UploadByHttpActionHandler extends AbstractBaseAction
     /**
      * @throws FileNameReservedException
      * @throws InvalidUrlException
-     * @throws UploadException
+     * @throws \Exception\Upload\UploadException
      *
      * @return array
      */
     public function execute(): array
     {
-        $this->handleValidation();
+        // Don't care about
+        parent::execute();
 
         $code = 418;
         $file = null;
@@ -152,9 +127,9 @@ class UploadByHttpActionHandler extends AbstractBaseAction
     }
 
     /**
-     * @throws UploadException
+     * @inheritDoc
      */
-    private function handleValidation()
+    protected function handleValidation(): array
     {
         // TODO Replace me with Symfony/Component/Validator/Constraints/File
         // or Symfony/Component/Validator/Constraints/FileValidator
@@ -191,6 +166,9 @@ class UploadByHttpActionHandler extends AbstractBaseAction
         if (filesize($uploadedFile['tmp_name']) >= $this->maxFileSize) {
             throw new UploadException('File size exceeds the limit');
         }
+
+        // Return nothing
+        return [];
     }
 
     /**
@@ -201,9 +179,10 @@ class UploadByHttpActionHandler extends AbstractBaseAction
      *
      * @return \Model\Entity\File
      */
-    public function handleUpload(array $rawData): File
+    protected function handleUpload(array $rawData): File
     {
         if (!$this->registry->isDuplicateAllowed()) {
+            // "High verification": rely on file content
             $hash = $this->manager->getHashFile($rawData['tmp_name']);
 
             if ($this->registry->existsInRegistryByHash($hash)) {
@@ -216,7 +195,7 @@ class UploadByHttpActionHandler extends AbstractBaseAction
             }
         }
 
-        $adapter = $this->manager->chooseAdapter($rawData);
+        $adapter = $this->manager->chooseAdapterFromUpload($rawData);
 
         try {
             $uploadedFile = $this->manager->storeUploadedFile(

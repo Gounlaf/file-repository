@@ -69,6 +69,11 @@ class File
     protected $size;
 
     /**
+     * @var int
+     */
+    protected $status;
+
+    /**
      * @var \Model\Entity\Tag[]|\Doctrine\Common\Collections\ArrayCollection
      */
     protected $tags;
@@ -276,6 +281,26 @@ class File
     public function setSize(int $size): File
     {
         $this->size = $size;
+
+        return $this;
+    }
+
+    /**
+     * @return int
+     */
+    public function getStatus(): int
+    {
+        return $this->status;
+    }
+
+    /**
+     * @param int $status
+     *
+     * @return File
+     */
+    public function setStatus(int $status): File
+    {
+        $this->status = $status;
 
         return $this;
     }

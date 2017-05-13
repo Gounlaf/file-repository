@@ -34,17 +34,18 @@ class UploadController extends AbstractBaseController implements UploadControlle
         $request   = $this->getRequest();
 
         $action = new UploadByHttpActionHandler(
-            $container->offsetGet('storage.filesize'),
-            $this->getAllowedMimes(),
             $container->offsetGet('manager.storage'),
             $container->offsetGet('manager.file_registry'),
-            $container->offsetGet('manager.tag')
+            $container->offsetGet('manager.tag'),
+            $this->getAllowedMimes(),
+            $container->offsetGet('storage.filesize')
         );
 
+        // TODO: (re)Support file_name and file_overwrite options
         $action->setData(
             (string)$request->get('file_name'),
-            (bool)$request->get('file_overwrite'),
-            $this->getTags()
+            $this->getTags(),
+            (bool)$request->get('file_overwrite')
         );
 
         $action->setStrictUploadMode($this->isStrictUploadMode());

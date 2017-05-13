@@ -2,4 +2,6 @@
 
 namespace Exception\Upload;
 
-class UploadException extends \Exception { };
+class UploadException extends \InvalidArgumentException
+{
+}

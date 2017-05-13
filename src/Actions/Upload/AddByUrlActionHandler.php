@@ -2,44 +2,47 @@
 
 namespace Actions\Upload;
 
-use Actions\AbstractBaseAction;
+use Exception\Upload\UploadException;
+use GuzzleHttp\Client;
+
 use Exception\Upload\DuplicatedContentException;
+use Exception\Upload\InvalidUrlException;
 use Manager\Domain\TagManagerInterface;
 use Manager\FileRegistry;
-use Service\HttpFileDownloader;
 use Manager\StorageManager;
-use Exception\ImageManager\InvalidUrlException;
+use Model\Entity\File;
 
 /**
  * @package Actions\Upload
  */
-class AddByUrlActionHandler extends AbstractBaseAction
+class AddByUrlActionHandler extends AbstractUploadActionHandler
 {
     /**
-     * @var string $fileUrl
+     * AddByUrlActionHandler constructor.
+     *
+     * @param \Manager\StorageManager $manager
+     * @param \Manager\FileRegistry $registry
+     * @param \Manager\Domain\TagManagerInterface $tagManager
      */
-    private $fileUrl;
-
-    /**
-     * @var array $tags
-     */
-    private $tags = [];
-
-    /**
-     * @var TagManagerInterface $tagManager
-     */
-    private $tagManager;
+    public function __construct(
+        StorageManager $manager,
+        FileRegistry $registry,
+        TagManagerInterface $tagManager
+    ) {
+        parent::__construct($manager, $registry, $tagManager);
+    }
 
     /**
      * @param string $fileUrl
-     * @param array  $tags
-     * @param TagManagerInterface $tagManager
+     * @param array $tags
+     *
+     * @return \Actions\Upload\AddByUrlActionHandler
      */
-    public function __construct(string $fileUrl, array $tags, TagManagerInterface $tagManager)
+    public function setData(string $fileUrl, array $tags = []): AddByUrlActionHandler
     {
-        $this->fileUrl    = $fileUrl;
-        $this->tagManager = $tagManager;
-        $this->tags       = $tags;
+        parent::setData($fileUrl, $tags);
+
+        return $this;
     }
 
     /**
@@ -48,65 +51,90 @@ class AddByUrlActionHandler extends AbstractBaseAction
      */
     public function execute(): array
     {
-        $this->assertValidUrl($this->fileUrl);
+        $validationData = $this->handleValidation();
 
-        /**
-         * @var StorageManager $manager
-         * @var FileRegistry   $registry
-         */
-        $manager    = $this->getContainer()->offsetGet('manager.storage');
-        $registry   = $this->getContainer()->offsetGet('manager.file_registry');
+        $code = 418;
+        $file = null;
 
-        if (!$registry->existsInRegistry($this->fileUrl)) {
-            $targetPath = $manager->getPathWhereToStoreTheFile($this->fileUrl);
+        try {
+            $file = $this->handleDownload($this->source, $validationData);
+            $code = 200;
+        } catch (DuplicatedContentException $e) {
+            $file = $e->getDuplicate();
+            $code = 301;
+        };
 
-            /** @var HttpFileDownloader|Callable $downloader */
-            $downloader = $this->getContainer()->offsetGet('service.http_file_downloader');
-            $downloader = $downloader($this->fileUrl);
-            $savedFile = $downloader->saveTo($targetPath);
+        return [
+            'success' => true,
+            'status'  => 'OK',
+            'code'    => $code,
+            'url'     => $this->registry->getFileUrl($file)
+        ];
+    }
 
-            try {
-                $file = $registry->registerByName($this->fileUrl, $savedFile->getFileMimeType());
+    protected function handleDownload(string $url, array $validationData): File
+    {
+        if (!$this->registry->isDuplicateAllowed()) {
+            // "Low verification": rely on file content
+            $hash = $this->manager->getHashUrl($url);
 
-                foreach ($this->tags as $tag) {
-                    $this->tagManager->attachTagToFile($tag, $file);
-                }
+            if ($this->registry->existsInRegistryByHash($hash)) {
+                throw new DuplicatedContentException(
+                    'Duplicate content',
+                    $this->registry->getFileByContentHash($hash)
+                );
+            }
+        }
 
-            } catch (DuplicatedContentException $e) {
+        $adapter = $this->manager->chooseAdapterFromUrl($url);
 
-                // on duplicate content redirect to other file
-                $file = $e->getDuplicate(); // original file that WAS duplicated
-                $registry->revertUploadedDuplicate($targetPath);
+        try {
+            $uploadedFile = $this->manager->storeFileFromRemoteSource(
+                $adapter,
+                $url,
+                $validationData
+            );
 
-                foreach ($this->tags as $tag) {
-                    $this->tagManager->attachTagToFile($tag, $file);
-                }
+            $file = $this->registry->register($uploadedFile);
 
-                return [
-                    'status' => 'OK',
-                    'code'   => 301,
-                    'url'    => $manager->getFileUrl($file),
-                ];
+            foreach ($this->tags as $tag) {
+                $this->tagManager->attachTagToFile($tag, $file);
             }
 
-            return [
-                'status' => 'OK',
-                'code'   => 200,
-                'url'    => $manager->getFileUrl($file),
-            ];
+            return $file;
+        } catch (UploadException $e) {
+            throw $e;
+        }
+    }
+
+    /**
+     * @inheritDoc
+     */
+    protected function handleValidation(): array
+    {
+        $this->assertValidUrl($this->source);
+
+        $targetInfo = (new Client())->head($this->source, [
+            'allow_redirects' => true,
+        ]);
+
+        if (200 !== $targetInfo->getStatusCode()) {
+            throw new InvalidUrlException(sprintf(
+                'Cannot retrieve remote content; status code: %d',
+                $targetInfo->getStatusCode()
+            ), 500);
         }
 
         return [
-            'status' => 'Not-Changed',
-            'code'   => 200,
-            'url'    => $manager->getUrlByName($this->fileUrl),
+            'headResult' => $targetInfo
         ];
     }
 
     /**
      * @param string $url
      *
-     * @throws InvalidUrlException
+     * @throws \Exception\Upload\InvalidUrlException
+     *
      * @return bool
      */
     public function assertValidUrl($url)

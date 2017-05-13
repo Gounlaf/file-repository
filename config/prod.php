@@ -11,6 +11,9 @@
  *
  * <?php
  * $app['api.key'] = 'XxX'; return $app;
+ *
+ *
+ * When you File Repository is "initiated", don't change 'storage.hash' value!
  */
 
 $protocol = 'http';
@@ -34,6 +37,7 @@ $app['downloader.mimes'] = [
 ];
 
 // storage settings
+$app['storage.hash'] = 'sha256';
 $app['storage.tmppath'] = realpath(__DIR__ . '/../var/tmp');
 $app['storage.path'] = realpath(__DIR__ . '/../web/storage');
 $app['storage.filesize'] = 1024 * 1024 * 300; // 300 kb limit

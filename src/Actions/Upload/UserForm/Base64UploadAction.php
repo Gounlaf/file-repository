@@ -24,32 +24,24 @@ class Base64UploadAction extends AbstractBaseAction
     }
 
     /**
-     * @return ImageJsonPayload
-     */
-    private function getPayload()
-    {
-        return $this->payload;
-    }
-
-    /**
      * @return array
      */
     public function execute(): array
     {
         $tempFileName = tempnam(sys_get_temp_dir(), 'upload');
-        file_put_contents($tempFileName, $this->getPayload()->getDecodedFileContents());
+        file_put_contents($tempFileName, $this->payload->getDecodedFileContents());
 
         $_FILES['upload'] = [
-            'name'     => $this->getPayload()->getFileName(),
+            'name'     => $this->payload->getFileName(),
             'error'    => null,
             'tmp_name' => $tempFileName,
-            'size'     => $this->getPayload()->getPayloadSize(),
-            'type'     => $this->getPayload()->getMimeType(),
+            'size'     => $this->payload->getPayloadSize(),
+            'type'     => $this->payload->getMimeType(),
         ];
 
         return [
             'tempFileName' => $tempFileName,
-            'fileName'     => $this->getPayload()->getFileName(),
+            'fileName'     => $this->payload->getFileName(),
         ];
     }
 }

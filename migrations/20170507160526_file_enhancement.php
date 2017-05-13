@@ -11,7 +11,7 @@ class FileEnhancement extends BaseMigration
         ]);
 
         $table->changeColumn('contentHash', 'string', [
-            'length' => 128,// based on SHA-2 algos
+            'length' => 64,// (sha256)
             'null' => false
         ]);
 
@@ -39,6 +39,10 @@ class FileEnhancement extends BaseMigration
         ]);
 
         $table->addColumn('size', 'integer', [
+            'null' => false
+        ]);
+
+        $table->addColumn('status', 'integer', [
             'null' => false
         ]);
 

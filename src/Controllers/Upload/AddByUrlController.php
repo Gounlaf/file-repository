@@ -2,18 +2,20 @@
 
 namespace Controllers\Upload;
 
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Response;
+
 use Actions\Upload\AddByUrlActionHandler;
 use Controllers\AbstractBaseController;
 use Model\Request\AddByUrlPayload;
-use Symfony\Component\HttpFoundation\JsonResponse;
-use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Serializer\SerializerInterface;
 
 /**
  * HTTP/HTTPS handler
  * ==================
  *
  * @package Controllers\Upload
+ *
+ * @method \Model\Request\AddByUrlPayload getPayload()
  */
 class AddByUrlController extends AbstractBaseController implements UploadControllerInterface
 {
@@ -26,25 +28,26 @@ class AddByUrlController extends AbstractBaseController implements UploadControl
     }
 
     /**
-     * @return AddByUrlPayload
-     */
-    protected function getPayload()
-    {
-        return parent::getPayload();
-    }
-
-    /**
      * @return JsonResponse|Response
      */
-    public function uploadAction() : Response
+    public function uploadAction(): Response
     {
+        $container = $this->getContainer();
+
         $action = new AddByUrlActionHandler(
-            $this->getPayload()->getFileUrl(),
-            array_filter($this->getPayload()->getTags()),
-            $this->getContainer()->offsetGet('manager.tag')
+            $container->offsetGet('manager.storage'),
+            $container->offsetGet('manager.file_registry'),
+            $container->offsetGet('manager.tag')
         );
-        $action->setContainer($this->getContainer())
-            ->setController($this);
+
+        $payload = $this->getPayload();
+
+        $action->setContainer($container)
+            ->setController($this)
+            ->setData(
+                $payload->getFileUrl(),
+                array_filter($payload->getTags())
+            );
 
         return new JsonResponse($action->execute());
     }
@@ -52,7 +55,7 @@ class AddByUrlController extends AbstractBaseController implements UploadControl
     /**
      * @inheritdoc
      */
-    public function supportsProtocol(string $protocolName) : bool
+    public function supportsProtocol(string $protocolName): bool
     {
         return in_array($protocolName, ['http', 'https']);
     }

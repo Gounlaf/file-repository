@@ -21,6 +21,7 @@ $app['manager.storage'] = function (Application $app) {
         $app['flysystem.instances'],
         $app['storage.tmppath'],
         $app['storage.path'],
+        $app['storage.hash'],
         $app['url_generator'],
         $app['weburl']
     );

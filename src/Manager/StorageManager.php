@@ -2,14 +2,16 @@
 
 namespace Manager;
 
-use League\Flysystem\Adapter\Local;
+use \SplFileInfo;
+
+use GuzzleHttp\Client;
+use GuzzleHttp\Psr7\StreamWrapper;
 use League\Flysystem\FilesystemInterface;
 use League\Flysystem\FileExistsException;
 use League\Flysystem\FileNotFoundException as FlysystemFileNotFoundException;
 use Ramsey\Uuid\Uuid;
 use Ramsey\Uuid\UuidInterface;
 use Stringy\Stringy;
-use Symfony\Component\Finder\SplFileInfo;
 use Symfony\Component\Routing\Generator\UrlGenerator;
 
 use Exception\ImageManager\DirectoryNotFoundException;
@@ -52,11 +54,6 @@ class StorageManager
     private $flysystems;
 
     /**
-     * @var bool[]
-     */
-    private $flysystemsLocal;
-
-    /**
      * @var string prefered hash algo (highest sha* available)
      */
     private $hashAlgo;
@@ -67,6 +64,7 @@ class StorageManager
      * @param array $flysystems
      * @param string $tmpPath
      * @param string $storagePath
+     * @param string $hashAlgo
      * @param \Symfony\Component\Routing\Generator\UrlGenerator $router
      * @param string $webUrl
      *
@@ -76,11 +74,13 @@ class StorageManager
         array $flysystems,
         string $tmpPath,
         string $storagePath,
+        string $hashAlgo,
         UrlGenerator $router,
         string $webUrl
     ) {
         $this->flysystems = $flysystems;
         $this->tmpPath    = realpath($tmpPath);
+        $this->hashAlgo = $hashAlgo;
 
         // TODO Remove me
         $this->storagePath = realpath($storagePath);
@@ -88,15 +88,6 @@ class StorageManager
 
         $this->webUrl = $webUrl;
 
-        $this->hashAlgo = 'md5';// Old default one
-
-        foreach (hash_algos() as $algo) {
-            if (0 !== strpos($algo, 'sha')) {
-                continue;
-            }
-
-            $this->hashAlgo = $algo;
-        }
 
         // TODO Remove me
         if (!$this->storagePath) {
@@ -269,13 +260,6 @@ class StorageManager
                     'imageName' => $file->getUuid(),
                 ]
             );
-
-//        return $this->webUrl . $this->router->generate(
-//                'GET_public_download_imageName',
-//                [
-//                    'imageName' => $file->getFileName(),
-//                ]
-//            );
     }
 
     /**
@@ -314,7 +298,19 @@ class StorageManager
      *
      * @return string
      */
-    public function chooseAdapter(array $rawData): string
+    public function chooseAdapterFromUpload(array $rawData): string
+    {
+        return 'default';
+    }
+
+    /**
+     * TODO Choose adapter according to... some rules?
+     *
+     * @param string $url
+     *
+     * @return string
+     */
+    public function chooseAdapterFromUrl(string $url): string
     {
         return 'default';
     }
@@ -324,7 +320,7 @@ class StorageManager
      * @param array $rawData a $_FILES entry
      * @param bool $strictMode
      *
-     * @return File
+     * @return \Model\Entity\File
      *
      * @throws \Exception\Upload\UploadException
      * @throws \Exception\Flysystem\SystemNotFoundException
@@ -339,10 +335,10 @@ class StorageManager
 
         $target = $this->generateRelativePath($uuid);
 
-        if (false === $strictMode) {
-            $success = rename($rawData['tmp_name'], $tmpTarget);
-        } else {
+        if ($strictMode) {
             $success = move_uploaded_file($rawData['tmp_name'], $tmpTarget);
+        } else {
+            $success = rename($rawData['tmp_name'], $tmpTarget);
         }
 
         if (!$success) {
@@ -359,7 +355,6 @@ class StorageManager
         }
 
         try {
-            // TODO use dynamic key
             if (!$this->getFlysystemForConfigKey($adapter)->writeStream($target, $stream)) {
                 throw new UploadException('Cannot save uploaded file');
             }
@@ -377,21 +372,94 @@ class StorageManager
         }
 
         $originalName = new \SplFileInfo($rawData['name']);
-        $extension = '.' . $originalName->getExtension();
 
         return (new File())
             ->setUuid($uuid->toString())
-            ->setFileName(Stringy::create($originalName->getBasename($extension))
-                ->trim()
-                ->collapseWhitespace()
-                ->slugify(' ')
-                ->append($extension)
-            )
+            ->setFileName($this->cleanFileName($originalName))
             ->setSize($fileSize)
             ->setAdapterName($adapter)
             ->setMimeType($mimeType)
             ->setContentHash($contentHash)
+            ->setPath($target)
+            ->setStatus(1);
+    }
+
+    /**
+     * @param string $adapter
+     * @param string $url
+     * @param array $validationData
+     *
+     * @return \Model\Entity\File
+     *
+     * @throws \Exception\Upload\UploadException
+     * @throws \Exception\Flysystem\SystemNotFoundException
+     */
+    public function storeFileFromRemoteSource(
+        string $adapter,
+        string $url,
+        array $validationData
+    ): File {
+        $uuid      = Uuid::uuid4();
+
+        $target = $this->generateRelativePath($uuid);
+
+        $headResult = $validationData['headResult'];
+
+        $originalName = new SplFileInfo($url);
+
+        $file = (new File())
+            ->setUuid($uuid->toString())
+            ->setFileName($this->cleanFileName($originalName))
+            ->setAdapterName($adapter)
             ->setPath($target);
+
+        if ($headResult->hasHeader('Content-Length')) {
+            $file->setSize((int) $headResult->getHeaderLine('Content-Length'));
+        }
+
+        if ($headResult->hasHeader('Content-Type')) {
+            $file->setMimeType($headResult->getHeaderLine('Content-Type'));
+        }
+
+        // Can't use ETag if available since it's value is from a "black box":
+        // https://en.wikipedia.org/wiki/HTTP_ETag
+        // "An ETag is an opaque identifier assigned by a web server to a specific version of a resource found at a URL"
+//        $contentHash = $this->getHashFile($tmpTarget);
+
+        $guzzle = new Client();
+        $response = $guzzle->get($url, [
+            'allow_redirects' => true,
+            'sink' => tmpfile()
+        ]);
+        $stream = StreamWrapper::getResource($response->getBody());
+
+        rewind($stream);
+
+        $ctx = hash_init($this->hashAlgo);
+        hash_update_stream($ctx, $stream);
+        $contentHash = hash_final($ctx);
+
+        $file->setContentHash($contentHash);
+        $file->setSize($response->getBody()->getSize());
+
+        try {
+            if (!$this->getFlysystemForConfigKey($adapter)->writeStream($target, $stream)) {
+                throw new UploadException('Cannot save uploaded file');
+            }
+        }/* catch (SystemNotFoundException|FileExistsException $e) {// PHP 7.1 :(
+            throw new UploadException('Cannot save uploaded file', 500, $e);
+        }*/
+        catch (SystemNotFoundException $e) {// PHP 7.1 :(
+            throw new UploadException('Cannot save uploaded file', 500, $e);
+        } catch (FileExistsException $e) {
+            throw new UploadException('Cannot save uploaded file', 500, $e);
+        } finally {
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
+        }
+
+        return $file->setStatus(1);
     }
 
     /**
@@ -491,7 +559,22 @@ class StorageManager
      */
     public function getHashFile(string $path): string
     {
-        return hash_file($this->hashAlgo, $path);
+        // TODO: Manage errors
+        $ctx = hash_init($this->hashAlgo);
+
+        hash_update_file($ctx, $path);
+
+        return hash_final($ctx);
+    }
+
+    /**
+     * @param string $url
+     *
+     * @return string
+     */
+    public function getHashUrl(string $url): string
+    {
+        return hash($this->hashAlgo,  $url);
     }
 
     /**
@@ -535,6 +618,22 @@ class StorageManager
         if (!$this->getFlysystem($file)->has($file->getPath())) {
             throw new FileNotFoundException($file->getPath());
         }
+    }
+
+    /**
+     * @param \SplFileInfo $fileInfo
+     *
+     * @return string
+     */
+    protected function cleanFileName(SplFileInfo $fileInfo): string
+    {
+        $extension = '.' . $fileInfo->getExtension();
+
+        return (string) Stringy::create($fileInfo->getBasename($extension))
+            ->trim()
+            ->collapseWhitespace()
+            ->slugify(' ')
+            ->append($extension);
     }
 
     /**

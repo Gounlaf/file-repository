@@ -39,6 +39,9 @@ Model\Entity\File:
         size:
             type: bigint
             nullable: false
+        status:
+            type: integer
+            nullable: false
     manyToMany:
         tags:
             targetEntity: Model\Entity\Tag
