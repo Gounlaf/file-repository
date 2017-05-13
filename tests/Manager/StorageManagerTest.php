@@ -20,16 +20,16 @@ class StorageManagerTest extends WolnosciowiecTestCase
         return $this->app->offsetGet('manager.storage');
     }
 
-    /**
-     * @see StorageManager::getFileUrl()
-     */
-    public function testGetFileUrl()
-    {
-        $this->assertSame(
-            'http://localhost:8888/public/download/long-live-iwa.png',
-            $this->getManager()->getFileUrl((new File())->setFileName('long-live-iwa.png'))
-        );
-    }
+//    /**
+//     * @see StorageManager::getFileUrl()
+//     */
+//    public function testGetFileUrl()
+//    {
+//        $this->assertSame(
+//            'http://localhost:8888/public/download/long-live-iwa.png',
+//            $this->getManager()->getFileUrl((new File())->setFileName('long-live-iwa.png'))
+//        );
+//    }
 
     /**
      * @return array
@@ -57,83 +57,83 @@ class StorageManagerTest extends WolnosciowiecTestCase
         ];
     }
 
-    /**
-     * @dataProvider provideUrls
-     *
-     * @param string $url
-     * @param string $expectedFileName
-     * @param bool   $withPrefix
-     */
-    public function testGetFileName(string $url, string $expectedFileName, bool $withPrefix)
-    {
-        $this->assertSame($expectedFileName, $this->getManager()->getFileName($url, $withPrefix));
-    }
-
-    /**
-     * @dataProvider provideUrls
-     * @param string $url
-     */
-    public function testGetUniquePathWhereToStorageFile(string $url)
-    {
-        $this->assertTrue(
-            !is_file($this->getManager()->getUniquePathWhereToStorageFile($url))
-        );
-    }
-
-    /**
-     * @dataProvider provideUrls
-     * @param string $url
-     */
-    public function testCanWriteFile(string $url)
-    {
-        $this->assertTrue(
-            $this->getManager()->canWriteFile($url)
-        );
-    }
-
-    /**
-     * @see StorageManager::assertGetStoragePathForFile()
-     */
-    public function testAssertGetStoragePathForFile()
-    {
-        file_put_contents($this->getManager()->getStoragePath() . '/test.txt', 'test');
-
-        $this->assertTrue(
-            is_file($this->getManager()->assertGetStoragePathForFile('test.txt'))
-        );
-
-        // clean up
-        @unlink($this->getManager()->getStoragePath() . '/test.txt');
-    }
-
-    /**
-     * @see StorageManager::assertGetStoragePathForFile()
-     * @expectedException \Symfony\Component\HttpFoundation\File\Exception\FileNotFoundException
-     */
-    public function testFailureAssertGetStoragePathForFile()
-    {
-        $this->assertTrue(
-            is_file($this->getManager()->assertGetStoragePathForFile('test.txt'))
-        );
-    }
-
-    public function testGetUrlByName()
-    {
-        $path = $this->getManager()->getStoragePath() . '/test.txt';
-        file_put_contents($path, 'test');
-
-        // file that exists
-        $this->assertSame(
-            'http://localhost:8888/public/download/test.txt',
-            $this->getManager()->getUrlByName($path)
-        );
-
-        // file that does not exists
-        $this->assertSame(
-            'http://localhost:8888/public/download/c24b6a3e-test-image.png',
-            $this->getManager()->getUrlByName('test-image.png')
-        );
-
-        @unlink($path);
-    }
+//    /**
+//     * @dataProvider provideUrls
+//     *
+//     * @param string $url
+//     * @param string $expectedFileName
+//     * @param bool   $withPrefix
+//     */
+//    public function testGetFileName(string $url, string $expectedFileName, bool $withPrefix)
+//    {
+//        $this->assertSame($expectedFileName, $this->getManager()->getFileName($url, $withPrefix));
+//    }
+//
+//    /**
+//     * @dataProvider provideUrls
+//     * @param string $url
+//     */
+//    public function testGetUniquePathWhereToStorageFile(string $url)
+//    {
+//        $this->assertTrue(
+//            !is_file($this->getManager()->getUniquePathWhereToStorageFile($url))
+//        );
+//    }
+//
+//    /**
+//     * @dataProvider provideUrls
+//     * @param string $url
+//     */
+//    public function testCanWriteFile(string $url)
+//    {
+//        $this->assertTrue(
+//            $this->getManager()->canWriteFile($url)
+//        );
+//    }
+//
+//    /**
+//     * @see StorageManager::assertGetStoragePathForFile()
+//     */
+//    public function testAssertGetStoragePathForFile()
+//    {
+//        file_put_contents($this->getManager()->getStoragePath() . '/test.txt', 'test');
+//
+//        $this->assertTrue(
+//            is_file($this->getManager()->assertGetStoragePathForFile('test.txt'))
+//        );
+//
+//        // clean up
+//        @unlink($this->getManager()->getStoragePath() . '/test.txt');
+//    }
+//
+//    /**
+//     * @see StorageManager::assertGetStoragePathForFile()
+//     * @expectedException \Symfony\Component\HttpFoundation\File\Exception\FileNotFoundException
+//     */
+//    public function testFailureAssertGetStoragePathForFile()
+//    {
+//        $this->assertTrue(
+//            is_file($this->getManager()->assertGetStoragePathForFile('test.txt'))
+//        );
+//    }
+//
+//    public function testGetUrlByName()
+//    {
+//        $path = $this->getManager()->getStoragePath() . '/test.txt';
+//        file_put_contents($path, 'test');
+//
+//        // file that exists
+//        $this->assertSame(
+//            'http://localhost:8888/public/download/test.txt',
+//            $this->getManager()->getUrlByName($path)
+//        );
+//
+//        // file that does not exists
+//        $this->assertSame(
+//            'http://localhost:8888/public/download/c24b6a3e-test-image.png',
+//            $this->getManager()->getUrlByName('test-image.png')
+//        );
+//
+//        @unlink($path);
+//    }
 }

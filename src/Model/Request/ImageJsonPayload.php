@@ -8,17 +8,17 @@ namespace Model\Request;
 class ImageJsonPayload
 {
     /**
-     * @var string $content
+     * @var string
      */
     private $content = '';
 
     /**
-     * @var string $fileName
+     * @var string
      */
     private $fileName;
 
     /**
-     * @var string $mimeType
+     * @var string
      */
     private $mimeType;
 
@@ -70,31 +70,37 @@ class ImageJsonPayload
 
     /**
      * @param string $content
+     *
      * @return ImageJsonPayload
      */
     public function setContent(string $content): ImageJsonPayload
     {
         $this->content = $content;
+
         return $this;
     }
 
     /**
      * @param string $fileName
+     *
      * @return ImageJsonPayload
      */
     public function setFileName(string $fileName): ImageJsonPayload
     {
         $this->fileName = $fileName;
+
         return $this;
     }
 
     /**
      * @param string $mimeType
+     *
      * @return ImageJsonPayload
      */
     public function setMimeType(string $mimeType): ImageJsonPayload
     {
         $this->mimeType = $mimeType;
+
         return $this;
     }
 }

@@ -45,9 +45,9 @@ abstract class AbstractUploadActionHandler extends AbstractBaseAction
         FileRegistry $registry,
         TagManagerInterface $tagManager
     ) {
-        $this->manager     = $manager;
-        $this->registry    = $registry;
-        $this->tagManager  = $tagManager;
+        $this->manager    = $manager;
+        $this->registry   = $registry;
+        $this->tagManager = $tagManager;
     }
 
     /**
@@ -56,10 +56,10 @@ abstract class AbstractUploadActionHandler extends AbstractBaseAction
      *
      * @return $this
      */
-    public function setData(string $source,  array $tags = [])
+    public function setData(string $source, array $tags = [])
     {
-        $this->source    = $source;
-        $this->tags       = $tags;
+        $this->source = $source;
+        $this->tags   = $tags;
 
         return $this;
     }

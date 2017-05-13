@@ -30,7 +30,6 @@ use Service\HttpFileDownloader;
  */
 class StorageManager
 {
-    // TODO Remove me
     /**
      * @var \Symfony\Component\Routing\Generator\UrlGenerator
      */
@@ -51,6 +50,7 @@ class StorageManager
      */
     protected $tmpPath;
 
+    // TODO Remove me
     /** @var string $storagePath */
     private $storagePath;
 
@@ -106,40 +106,6 @@ class StorageManager
         if (false === $this->tmpPath) {
             throw new DirectoryNotFoundException('Temporary storage path defined in "storage.tmppath" configuration option does not exists');
         }
-    }
-
-    /**
-     * @deprecated
-     *
-     * Escape path, make sure it will not go out of the storagePath
-     *
-     * @param string $path
-     *
-     * @return string
-     */
-    public function escapeTargetPath(string $path): string
-    {
-        $fileName  = pathinfo($path, PATHINFO_BASENAME);
-        $directory = realpath(dirname($path));
-
-//        if ($directory !== realpath($this->storagePath)) {
-//            return '';
-//        }
-
-        return $directory . '/' . $fileName;
-    }
-
-    /**
-     * @param string $fileName
-     *
-     * @return string
-     */
-    public function escapeName(string $fileName): string
-    {
-        $fileName = str_replace('..', '', $fileName);
-        $fileName = str_replace('/', '-', $fileName);
-
-        return $fileName;
     }
 
     /**
@@ -269,35 +235,6 @@ class StorageManager
                     'imageName' => $file->getUuid(),
                 ]
             );
-    }
-
-    /**
-     * @param string $url
-     *
-     * @return string
-     */
-    public function getUrlByName(string $url): string
-    {
-        if (substr($url, 0, 1) === '/' && is_file($url)) {
-            $path = realpath($url);
-            $path = explode($this->storagePath, $path);
-
-            return $this->webUrl . $this->router->generate('GET_public_download_imageName', [
-                    'imageName' => ltrim($path[1], '/ '),
-                ]);
-        }
-
-        return $this->webUrl . $this->router->generate('GET_public_download_imageName', [
-                'imageName' => $this->getFileName($url),
-            ]);
-    }
-
-    /**
-     * @return string
-     */
-    public function getStoragePath()
-    {
-        return $this->storagePath;
     }
 
     /**
