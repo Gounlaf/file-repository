@@ -5,6 +5,8 @@ namespace Manager;
 use \DateTime;
 use \RuntimeException;
 
+use Doctrine\Common\Collections\Collection;
+use Doctrine\ORM\EntityNotFoundException;
 use Doctrine\ORM\EntityManager;
 use Stringy\Stringy;
 use Symfony\Component\Filesystem\Exception\FileNotFoundException;
@@ -81,7 +83,7 @@ class FileRegistry
      */
     public function existsInRegistry($fileName): bool
     {
-        return $this->repository->fetchOneByName($fileName) instanceof File;
+        return !$this->repository->findFileByName($fileName)->isEmpty();
     }
 
     /**
@@ -91,19 +93,62 @@ class FileRegistry
      */
     public function existsInRegistryByHash($hash): bool
     {
-        return $this->repository->getFileByContentHash($hash) instanceof File;
+        return !$this->repository->findFileByContentHash($hash)->isEmpty();
     }
 
     /**
-     * @param $hash
+     * TODO Throw another "FileNotFoundException" (from a different/more appropriate namespace)
      *
-     * @return \Model\Entity\File|null
+     * @param string $hash
+     *
+     * @return \Model\Entity\File[]|\Doctrine\Common\Collections\Collection
+     *
+     * @throws \Symfony\Component\Filesystem\Exception\FileNotFoundException
      */
-    public function getFileByContentHash($hash): File
+    public function getFileByContentHash(string $hash): Collection
     {
-        return $this->repository->getFileByContentHash($hash);
+        try {
+            return $this->repository->getFileByContentHash($hash);
+        } catch (EntityNotFoundException $e) {
+            throw new FileNotFoundException(null, 404, $e, $hash);
+        }
     }
 
+    /**
+     * TODO Throw another "FileNotFoundException" (from a different/more appropriate namespace)
+     *
+     * @param string $name
+     *
+     * @return \Model\Entity\File[]|\Doctrine\Common\Collections\Collection
+     *
+     * @throws \Symfony\Component\Filesystem\Exception\FileNotFoundException
+     */
+    public function getFileByName(string $name): Collection
+    {
+        try {
+            return $this->repository->getFileByName($name);
+        } catch (EntityNotFoundException $e) {
+            throw new FileNotFoundException(null, 404, $e, $name);
+        }
+    }
+
+    /**
+     * TODO Throw another "FileNotFoundException" (from a different/more appropriate namespace)
+     *
+     * @param string $publicId
+     *
+     * @return \Model\Entity\File
+     *
+     * @throws \Symfony\Component\Filesystem\Exception\FileNotFoundException
+     */
+    public function getFileByPublicId(string $publicId): File
+    {
+        try {
+            return $this->repository->getFileByPublicId($publicId);
+        } catch (EntityNotFoundException $e) {
+            throw new FileNotFoundException(null, 404, $e, $publicId);
+        }
+    }
 
     /**
      * @param \Model\Entity\File $file
@@ -237,9 +282,13 @@ class FileRegistry
     }
 
     /**
+     * TODO Throw a more specific exception
+     *
      * Delete a file from disk and from the registry
      *
      * @param \Model\Entity\File $file
+     *
+     * @throws \RuntimeException
      */
     public function deleteFile(File $file)
     {
@@ -256,7 +305,7 @@ class FileRegistry
                 'Something when wrong during file deletion; adapter: %s; path: %s',
                 $file->getAdapterName(),
                 $file->getPath()
-            ), $e);
+            ), 0, $e);
         }
 
         $this->em->remove($file);

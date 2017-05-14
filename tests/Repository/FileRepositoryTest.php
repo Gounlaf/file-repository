@@ -20,29 +20,29 @@ class FileRepositoryTest extends WolnosciowiecTestCase
         return $this->app->offsetGet('repository.file');
     }
 
-    /**
-     * @see FileRepositoryInterface::fetchOneByName()
-     * @see FileRepositoryInterface::getFileByContentHash()
-     */
-    public function testFetchOne()
-    {
-        $this->prepareDatabase();
-
-        /** @var FileRegistry $fileManager */
-        $fileManager = $this->app->offsetGet('manager.file_registry');
-        file_put_contents(__DIR__ . '/../../web/storage/6f297f45-phpunit-test.txt', 'Hello world');
-
-        // register the file in the registry
-        $file = $fileManager->registerByName('phpunit-test.txt', 'text/plain');
-
-        // fetch back from the registry by name
-        $fetchedFile = $this->getRepository()->fetchOneByName($file->getFileName());
-        $this->assertSame($fetchedFile->getId(), $file->getId());
-
-        // fetch by content hash
-        $fetchedFile = $this->getRepository()->getFileByContentHash($file->getContentHash());
-        $this->assertSame($fetchedFile->getId(), $file->getId());
-
-        @unlink(__DIR__ . '/../../web/storage/6f297f45-phpunit-test.txt');
-    }
+//    /**
+//     * @see FileRepositoryInterface::fetchOneByName()
+//     * @see FileRepositoryInterface::getFileByContentHash()
+//     */
+//    public function testFetchOne()
+//    {
+//        $this->prepareDatabase();
+//
+//        /** @var FileRegistry $fileManager */
+//        $fileManager = $this->app->offsetGet('manager.file_registry');
+//        file_put_contents(__DIR__ . '/../../web/storage/6f297f45-phpunit-test.txt', 'Hello world');
+//
+//        // register the file in the registry
+//        $file = $fileManager->registerByName('phpunit-test.txt', 'text/plain');
+//
+//        // fetch back from the registry by name
+//        $fetchedFile = $this->getRepository()->fetchOneByName($file->getFileName());
+//        $this->assertSame($fetchedFile->getId(), $file->getId());
+//
+//        // fetch by content hash
+//        $fetchedFile = $this->getRepository()->getFileByContentHash($file->getContentHash());
+//        $this->assertSame($fetchedFile->getId(), $file->getId());
+//
+//        @unlink(__DIR__ . '/../../web/storage/6f297f45-phpunit-test.txt');
+//    }
 }

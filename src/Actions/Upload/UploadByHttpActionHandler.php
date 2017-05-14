@@ -181,7 +181,7 @@ class UploadByHttpActionHandler extends AbstractUploadActionHandler
 
                 throw new DuplicatedContentException(
                     'Duplicate content',
-                    $this->registry->getFileByContentHash($hash)
+                    $this->registry->getFileByContentHash($hash)->current()
                 );
             }
         }

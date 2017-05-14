@@ -4,11 +4,6 @@ namespace Actions\Registry;
 
 use Actions\AbstractBaseAction;
 use Manager\FileRegistry;
-use Manager\StorageManager;
-use Model\Entity\File;
-use Repository\Domain\FileRepositoryInterface;
-use Symfony\Component\Filesystem\Exception\FileNotFoundException;
-use Symfony\Component\Routing\Router;
 
 /**
  * @package Actions\Registry
@@ -16,49 +11,48 @@ use Symfony\Component\Routing\Router;
 class CheckExistAction extends AbstractBaseAction
 {
     /**
-     * @var FileRepositoryInterface $repository
+     * @var \Manager\FileRegistry
      */
-    private $repository;
+    protected $registry;
 
     /**
-     * @var string $fileName
+     * @var string
      */
-    private $fileName;
+    protected $fileName;
 
     /**
-     * @var StorageManager $manager
+     * @param \Manager\FileRegistry $registry
+     * @param string $fileName
      */
-    private $manager;
-
-    /**
-     * @param string                  $fileName
-     * @param StorageManager          $manager
-     * @param FileRepositoryInterface $repository
-     */
-    public function __construct(string $fileName, StorageManager $manager, FileRepositoryInterface $repository)
+    public function __construct(FileRegistry $registry, string $fileName)
     {
+        $this->registry = $registry;
         $this->fileName = $fileName;
-        $this->manager  = $manager;
-        $this->repository = $repository;
     }
 
     /**
+     * TODO Throw another "FileNotFoundException" (from a different/more appropriate namespace)
+     *
      * @return array
+     *
+     * @throws \Symfony\Component\Filesystem\Exception\FileNotFoundException
      */
     public function execute(): array
     {
-        $file = $this->repository->fetchOneByName($this->fileName);
+        $collection = $this->registry->getFileByName($this->fileName);
 
-        if (!$file instanceof File) {
-            throw new FileNotFoundException('File not found: ' . $this->fileName);
+        $data = [];
+        foreach ($collection as $file) {
+            $data[] = [
+                'publicId' => $file->getPublicId(),
+                'url'      => $this->registry->getFileUrl($file),
+                'name'     => $file->getFileName(),
+                'mime'     => $file->getMimeType(),
+                'hash'     => $file->getContentHash(),
+                'date'     => $file->getDateAdded()->format('Y-m-d H:i:s'),
+            ];
         }
 
-        return [
-            'url'  => $this->manager->getFileUrl($file),
-            'name' => $file->getFileName(),
-            'mime' => $file->getMimeType(),
-            'hash' => $file->getContentHash(),
-            'date' => $file->getDateAdded()->format('Y-m-d H:i:s'),
-        ];
+        return $data;
     }
 }

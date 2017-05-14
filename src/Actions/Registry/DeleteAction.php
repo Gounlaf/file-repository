@@ -4,9 +4,6 @@ namespace Actions\Registry;
 
 use Actions\AbstractBaseAction;
 use Manager\FileRegistry;
-use Model\Entity\File;
-use Repository\Domain\FileRepositoryInterface;
-use Symfony\Component\Filesystem\Exception\FileNotFoundException;
 
 /**
  * Allows to delete a file from the repository
@@ -16,43 +13,37 @@ use Symfony\Component\Filesystem\Exception\FileNotFoundException;
 class DeleteAction extends AbstractBaseAction
 {
     /**
-     * @var FileRegistry $registry
+     * @var \Manager\FileRegistry
      */
-    private $registry;
+    protected $registry;
 
     /**
-     * @var FileRepositoryInterface $repository
+     * @var string
      */
-    private $repository;
+    protected $publicId;
 
     /**
-     * @var string $fileName
+     * @param \Manager\FileRegistry $registry
+     * @param string $publicId
      */
-    private $fileName;
-
-    /**
-     * @param string $fileName
-     * @param FileRepositoryInterface $repository
-     * @param FileRegistry $registry
-     */
-    public function __construct(string $fileName, FileRepositoryInterface $repository, FileRegistry $registry)
+    public function __construct(FileRegistry $registry, string $publicId)
     {
-        $this->fileName   = $fileName;
-        $this->registry   = $registry;
-        $this->repository = $repository;
+        $this->registry = $registry;
+        $this->publicId = $publicId;
     }
 
     /**
+     * TODO Throw another "FileNotFoundException" (from a different/more appropriate namespace)
+     * TODO Throw a more specific exception
+     *
      * @return array
+     *
+     * @throws \Symfony\Component\Filesystem\Exception\FileNotFoundException
+     * @throws \RuntimeException
      */
     public function execute(): array
     {
-        $file = $this->repository->fetchOneByName($this->fileName);
-
-        if (!$file instanceof File) {
-            throw new FileNotFoundException('File not found: ' . $this->fileName);
-        }
-
+        $file = $this->registry->getFileByPublicId($this->publicId);
         $this->registry->deleteFile($file);
 
         return [

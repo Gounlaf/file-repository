@@ -68,7 +68,7 @@ class AddByUrlActionHandler extends AbstractUploadActionHandler
             if ($this->registry->existsInRegistryByHash($hash)) {
                 throw new DuplicatedContentException(
                     'Duplicate content',
-                    $this->registry->getFileByContentHash($hash)
+                    $this->registry->getFileByContentHash($hash)->current()
                 );
             }
         }

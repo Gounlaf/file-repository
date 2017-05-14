@@ -2,6 +2,8 @@
 
 namespace Repository;
 
+use Doctrine\Common\Collections\Collection;
+use Doctrine\Common\Collections\Criteria;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\EntityNotFoundException;
 use Manager\StorageManager;
@@ -31,17 +33,6 @@ class FileRepository implements FileRepositoryInterface
     {
         $this->storageManager = $manager;
         $this->em             = $em;
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function fetchOneByName(string $name): File
-    {
-        $name = $this->storageManager->getStorageFileName($name);
-
-        return $this->em->getRepository(File::class)
-            ->findOneBy(['fileName' => $name]);
     }
 
     /**
@@ -89,10 +80,71 @@ class FileRepository implements FileRepositoryInterface
     /**
      * @inheritDoc
      */
-    public function getFileByContentHash(string $hash): File
+    public function findFileByContentHash(string $hash): Collection
     {
         return $this->em->getRepository(File::class)
-            ->findOneBy(['contentHash' => $hash]);
+            ->matching(Criteria::create()
+                ->where(Criteria::expr()->eq('contentHash', $hash))
+            );
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function getFileByContentHash(string $hash): Collection
+    {
+        $collection = $this->findFileByContentHash($hash);
+
+        if (0 == $collection->count()) {
+            throw new EntityNotFoundException();
+        }
+
+        return $collection;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function findFileByName(string $name): Collection
+    {
+        return $this->em->getRepository(File::class)
+            ->matching(Criteria::create()
+                ->where(Criteria::expr()->eq('fileName', $name))
+            );
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function getFileByName(string $name): Collection
+    {
+        $collection = $this->findFileByName($name);
+
+        if (0 == $collection->count()) {
+            throw new EntityNotFoundException();
+        }
+
+        return $collection;
+    }
+
+
+    /**
+     * @inheritDoc
+     */
+    public function findFileByPublicId(string $publicId): File
+    {
+        $collection = $this->em->getRepository(File::class)
+            ->matching(Criteria::create()
+                ->where(Criteria::expr()->eq('publicId', $publicId))
+            );
+
+        $file = $collection->first();
+
+        if (empty($file)) {
+            return null;
+        }
+
+        return $file;
     }
 
     /**
@@ -100,14 +152,21 @@ class FileRepository implements FileRepositoryInterface
      */
     public function getFileByPublicId(string $publicId): File
     {
-        /** @var $file \Model\Entity\File */
-        $file = $this->em->getRepository(File::class)
-            ->findOneBy(['publicId' => $publicId]);
+        $collection = $this->em->getRepository(File::class)
+            ->matching(Criteria::create()
+                ->where(Criteria::expr()->eq('publicId', $publicId))
+            );
 
-        if (null === $file) {
+        if (0 == $collection->count()) {
             throw new EntityNotFoundException();
         }
 
-        return $file;
+        if (1 < $collection->count()) {
+            // TODO Throw a more specific exception
+            // Something when wrong; public id are meant to be unique
+            throw new \LogicException();
+        }
+
+        return $collection->first();
     }
 }

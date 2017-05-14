@@ -15,20 +15,17 @@ use Symfony\Component\HttpFoundation\JsonResponse;
  */
 class RegistryController extends AbstractBaseController
 {
-    const RESPONSE_CODE_NOT_FOUND = 'file_not_found';
-
     /**
      * @return JsonResponse
      */
     public function checkExistsAction()
     {
         $act = $this->getAction(new CheckExistAction(
-            (string)$this->getRequest()->get('file_name'),
-            $this->getContainer()->offsetGet('manager.storage'),
-            $this->getContainer()->offsetGet('repository.file')
+            $this->getContainer()->offsetGet('manager.file_registry'),
+            (string)$this->getRequest()->get('fileName')
         ));
 
-        return $this->getActionResponse($act);
+        return $this->getActionResponse($act, 'CheckExistAction');
     }
 
     /**
@@ -37,12 +34,11 @@ class RegistryController extends AbstractBaseController
     public function deleteAction()
     {
         $act = $this->getAction(new DeleteAction(
-            (string)$this->getRequest()->get('file_name'),
-            $this->getContainer()->offsetGet('repository.file'),
-            $this->getContainer()->offsetGet('manager.file_registry')
+            $this->getContainer()->offsetGet('manager.file_registry'),
+            (string)$this->getRequest()->get('fileId')
         ));
 
-        return $this->getActionResponse($act);
+        return $this->getActionResponse($act, 'DeleteAction');
     }
 
     /**
@@ -50,27 +46,25 @@ class RegistryController extends AbstractBaseController
      * and returns a response in common format
      *
      * @param AbstractBaseAction $act
-     * @return JsonResponse
+     * @param string $actionName
+     *
+     * @return \Symfony\Component\HttpFoundation\JsonResponse
      */
-    private function getActionResponse($act)
+    private function getActionResponse(AbstractBaseAction $act, string $actionName): JsonResponse
     {
-        $actionName = explode('\\', get_class($act));
-        $actionName = end($actionName);
-
         try {
             return new JsonResponse([
                 'success' => true,
                 'action'  => $actionName,
                 'data'    => $act->execute(),
-            ]);
+            ], 200);
 
         } catch (FileNotFoundException $e) {
             return new JsonResponse([
                 'success' => false,
                 'action'  => $actionName,
-                'code'    => self::RESPONSE_CODE_NOT_FOUND,
                 'message' => 'Requested file does not exists',
-            ]);
+            ], 404);
         }
     }
 }
