@@ -3,7 +3,9 @@
 namespace Repository\Domain;
 
 use Doctrine\Common\Collections\Collection;
+use Doctrine\ORM\Tools\Pagination\Paginator;
 use Model\Entity\File;
+use Model\Request\SearchQueryPayload;
 
 /**
  * @package Repository\Domain
@@ -11,14 +13,11 @@ use Model\Entity\File;
 interface FileRepositoryInterface
 {
     /**
-     * @param array $tags
-     * @param string $searchQuery
-     * @param int $limit
-     * @param int $offset
+     * @param \Model\Request\SearchQueryPayload $searchQuery
      *
-     * @return array
+     * @return \Doctrine\ORM\Tools\Pagination\Paginator
      */
-    public function findByQuery(array $tags, string $searchQuery = '', int $limit, int $offset): array;
+    public function findBySearchQuery(SearchQueryPayload $searchQuery): Paginator;
 
     /**
      * @param string $name

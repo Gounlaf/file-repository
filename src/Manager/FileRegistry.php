@@ -8,6 +8,7 @@ use \RuntimeException;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\EntityNotFoundException;
 use Doctrine\ORM\EntityManager;
+use Doctrine\ORM\Tools\Pagination\Paginator;
 use Stringy\Stringy;
 use Symfony\Component\Filesystem\Exception\FileNotFoundException;
 use Symfony\Component\Routing\Generator\UrlGenerator;
@@ -15,6 +16,7 @@ use Symfony\Component\Routing\Generator\UrlGenerator;
 use Exception\Flysystem\SystemNotFoundException;
 use Exception\Upload\DuplicatedContentException;
 use Model\Entity\File;
+use Model\Request\SearchQueryPayload;
 use Repository\Domain\FileRepositoryInterface;
 
 /**
@@ -148,6 +150,16 @@ class FileRegistry
         } catch (EntityNotFoundException $e) {
             throw new FileNotFoundException(null, 404, $e, $publicId);
         }
+    }
+
+    /**
+     * @param \Model\Request\SearchQueryPayload $searchQuery
+     *
+     * @return \Doctrine\ORM\Tools\Pagination\Paginator
+     */
+    public function findBySearchQuery(SearchQueryPayload $searchQuery): Paginator
+    {
+        return $this->repository->findBySearchQuery($searchQuery);
     }
 
     /**

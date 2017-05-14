@@ -6,8 +6,10 @@ use Doctrine\Common\Collections\Collection;
 use Doctrine\Common\Collections\Criteria;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\EntityNotFoundException;
+use Doctrine\ORM\Tools\Pagination\Paginator;
 use Manager\StorageManager;
 use Model\Entity\File;
+use Model\Request\SearchQueryPayload;
 use Repository\Domain\FileRepositoryInterface;
 
 /**
@@ -38,43 +40,36 @@ class FileRepository implements FileRepositoryInterface
     /**
      * @inheritDoc
      */
-    public function findByQuery(array $tags, string $searchQuery = '', int $limit = 50, int $offset = 0): array
+    public function findBySearchQuery(SearchQueryPayload $searchQuery): Paginator
     {
         $qb = $this->em->getRepository(File::class)
-            ->createQueryBuilder('f');
-        $qb->select();
-        $qb->innerJoin('f.tags', 't');
+            ->createQueryBuilder('f')
+            ->innerJoin('f.tags', 't');
 
-        if (count($tags) > 0) {
-            $qb->andWhere('t.name in (:tags)')
-                ->setParameter('tags', $tags);
+        $criteria = Criteria::create();
+
+        if ($searchQuery->hasTags()) {
+            $criteria->andWhere(Criteria::expr()->in('t.name', $searchQuery->getTags()));
         }
 
-        if (strlen($searchQuery) > 0) {
-            $qb->andWhere('f.fileName LIKE :searchQuery')
-                ->setParameter('searchQuery', '%' . $searchQuery . '%');
+        if ($searchQuery->hasSearchQuery()) {
+            $criteria->andWhere(Criteria::expr()->contains('f.fileName', $searchQuery->getSearchQuery()));
         }
 
-        if ($limit > 0) {
-            $qb->setMaxResults($limit);
+        if ($searchQuery->hasLimit()) {
+            $criteria->setMaxResults($searchQuery->getLimit());
+
+            if ($searchQuery->hasOffset()) {
+                $criteria->setFirstResult($searchQuery->getOffset() * $searchQuery->getLimit());
+            }
         }
 
-        if ($offset > 0) {
-            $qb->setFirstResult($offset);
-        }
-
-        // max results counting
-        $countingQuery = clone $qb;
-        $countingQuery->select('count(f)');
-
-        // order by
-        $qb->addOrderBy('f.dateAdded', 'DESC');
-        $qb->addOrderBy('f.fileName', 'ASC');
-
-        return [
-            'results' => $qb->getQuery()->getResult(),
-            'max'     => $countingQuery->getQuery()->getScalarResult()[0][1] ?? 0,
-        ];
+        return new Paginator($qb->addCriteria($criteria
+            ->orderBy(array(
+                'f.dateAdded' => Criteria::DESC,
+                'f.fileName' => Criteria::ASC
+            ))
+        ));
     }
 
     /**

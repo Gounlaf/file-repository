@@ -2,12 +2,13 @@
 
 namespace Actions\Finder;
 
+use \DateTime;
+
 use Actions\AbstractBaseAction;
-use Manager\StorageManager;
-use Model\Entity\File;
+use Actions\Exception\InvalidStateException;
+use Manager\FileRegistry;
 use Model\Entity\Tag;
 use Model\Request\SearchQueryPayload;
-use Repository\Domain\FileRepositoryInterface;
 
 /**
  * @package Actions\Registry
@@ -15,46 +16,42 @@ use Repository\Domain\FileRepositoryInterface;
 class FindAction extends AbstractBaseAction
 {
     /**
-     * @var SearchQueryPayload $payload
+     * @var \Manager\FileRegistry
      */
-    private $payload;
+    protected $registry;
 
     /**
-     * @var FileRepositoryInterface $fileRepository
+     * @var \Model\Request\SearchQueryPayload
      */
-    private $fileRepository;
+    protected $payload;
 
     /**
-     * @var StorageManager $storage
+     * @param \Manager\FileRegistry $registry
      */
-    private $storage;
-
-    /**
-     * @param FileRepositoryInterface $fileRepository
-     * @param StorageManager          $storage
-     */
-    public function __construct(FileRepositoryInterface $fileRepository, StorageManager $storage)
+    public function __construct(FileRegistry $registry)
     {
-        $this->fileRepository = $fileRepository;
-        $this->storage        = $storage;
+        $this->registry = $registry;
     }
 
     /**
-     * @param File[] $files
+     * @param \Model\Entity\File[] $files
+     *
      * @return array
      */
-    private function remapFilesToResults(array $files)
+    private function remapFilesToResults(array $files): array
     {
         $results = [];
 
         foreach ($files as $file) {
-            $results[$file->getFileName()] = [
+            $results[$file->getPublicId()] = [
                 'name'         => $file->getFileName(),
                 'content_hash' => $file->getContentHash(),
                 'mime_type'    => $file->getMimeType(),
-                'tags'         => array_map(function (Tag $tag) { return $tag->getName(); }, $file->getTags()->toArray()),
-                'date_added'   => $file->getDateAdded(),
-                'url'          => $this->storage->getFileUrl($file),
+                'tags'         => array_map(function (Tag $tag) {
+                    return $tag->getName();
+                }, $file->getTags()->toArray()),
+                'date_added'   => $file->getDateAdded()->format(DateTime::ISO8601),
+                'url'          => $this->registry->getFileUrl($file),
             ];
         }
 
@@ -62,32 +59,37 @@ class FindAction extends AbstractBaseAction
     }
 
     /**
+     * @throws \Actions\Exception\InvalidStateException
+     *
      * @return array
      */
     public function execute(): array
     {
-        $files = $this->fileRepository->findByQuery(
-            $this->payload->getTags(),
-            $this->payload->getSearchQuery(),
-            $this->payload->getLimit(),
-            $this->payload->getOffset()
-        );
+        if (empty($this->payload)) {
+            throw new InvalidStateException('Missing search parameters (payload)');
+        }
+
+        $files = $this->registry->findBySearchQuery($this->payload);
+
+        $max = $files->count();
 
         return [
             'success'     => true,
-            'results'     => $this->remapFilesToResults($files['results']),
-            'max_results' => $files['max'],
-            'pages'       => $files['max'] > 0 ? ceil($files['max'] / $this->payload->getLimit()) : 0,
+            'results'     => $this->remapFilesToResults($files->getIterator()->getArrayCopy()),
+            'max_results' => $max,
+            'pages'       => $max > 0 ? ceil($max / $this->payload->getLimit()) : 0,
         ];
     }
 
     /**
      * @param SearchQueryPayload $payload
-     * @return FindAction
+     *
+     * @return \Actions\Finder\FindAction
      */
     public function setPayload(SearchQueryPayload $payload): FindAction
     {
         $this->payload = $payload;
+
         return $this;
     }
 }
