@@ -16,7 +16,12 @@ class StatsController extends AbstractBaseController
      */
     public function viewAction()
     {
-        $action = new StatsProviderAction();
+        $container = $this->getContainer();
+
+        $action = new StatsProviderAction(
+            $container->offsetGet('manager.file_registry'),
+            $container->offsetGet('manager.storage')
+        );
         $action->setContainer($this->getContainer());
         $action->setController($this);
 

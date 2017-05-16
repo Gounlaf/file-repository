@@ -6,6 +6,7 @@ use Doctrine\Common\Collections\Collection;
 use Doctrine\Common\Collections\Criteria;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\EntityNotFoundException;
+use Doctrine\ORM\EntityRepository;
 use Doctrine\ORM\Tools\Pagination\Paginator;
 use Manager\StorageManager;
 use Model\Entity\File;
@@ -29,7 +30,7 @@ class FileRepository implements FileRepositoryInterface
 
     /**
      * @param StorageManager $manager
-     * @param EntityManager  $em
+     * @param EntityManager $em
      */
     public function __construct(StorageManager $manager, EntityManager $em)
     {
@@ -42,7 +43,7 @@ class FileRepository implements FileRepositoryInterface
      */
     public function findBySearchQuery(SearchQueryPayload $searchQuery): Paginator
     {
-        $qb = $this->em->getRepository(File::class)
+        $qb = $this->repository()
             ->createQueryBuilder('f')
             ->innerJoin('f.tags', 't');
 
@@ -67,7 +68,7 @@ class FileRepository implements FileRepositoryInterface
         return new Paginator($qb->addCriteria($criteria
             ->orderBy(array(
                 'f.dateAdded' => Criteria::DESC,
-                'f.fileName' => Criteria::ASC
+                'f.fileName'  => Criteria::ASC
             ))
         ));
     }
@@ -77,10 +78,9 @@ class FileRepository implements FileRepositoryInterface
      */
     public function findFileByContentHash(string $hash): Collection
     {
-        return $this->em->getRepository(File::class)
-            ->matching(Criteria::create()
-                ->where(Criteria::expr()->eq('contentHash', $hash))
-            );
+        return $this->repository()->matching(Criteria::create()
+            ->where(Criteria::expr()->eq('contentHash', $hash))
+        );
     }
 
     /**
@@ -102,10 +102,9 @@ class FileRepository implements FileRepositoryInterface
      */
     public function findFileByName(string $name): Collection
     {
-        return $this->em->getRepository(File::class)
-            ->matching(Criteria::create()
-                ->where(Criteria::expr()->eq('fileName', $name))
-            );
+        return $this->repository()->matching(Criteria::create()
+            ->where(Criteria::expr()->eq('fileName', $name))
+        );
     }
 
     /**
@@ -128,10 +127,9 @@ class FileRepository implements FileRepositoryInterface
      */
     public function findFileByPublicId(string $publicId): File
     {
-        $collection = $this->em->getRepository(File::class)
-            ->matching(Criteria::create()
-                ->where(Criteria::expr()->eq('publicId', $publicId))
-            );
+        $collection = $this->repository()->matching(Criteria::create()
+            ->where(Criteria::expr()->eq('publicId', $publicId))
+        );
 
         $file = $collection->first();
 
@@ -147,10 +145,9 @@ class FileRepository implements FileRepositoryInterface
      */
     public function getFileByPublicId(string $publicId): File
     {
-        $collection = $this->em->getRepository(File::class)
-            ->matching(Criteria::create()
-                ->where(Criteria::expr()->eq('publicId', $publicId))
-            );
+        $collection = $this->repository()->matching(Criteria::create()
+            ->where(Criteria::expr()->eq('publicId', $publicId))
+        );
 
         if (0 == $collection->count()) {
             throw new EntityNotFoundException();
@@ -163,5 +160,21 @@ class FileRepository implements FileRepositoryInterface
         }
 
         return $collection->first();
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function count(): int
+    {
+        return (int)$this->repository()->matching(Criteria::create())->count();
+    }
+
+    /**
+     * @return \Doctrine\ORM\EntityRepository
+     */
+    protected function repository(): EntityRepository
+    {
+        return $this->em->getRepository(File::class);
     }
 }

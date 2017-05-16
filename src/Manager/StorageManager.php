@@ -46,6 +46,11 @@ class StorageManager
     protected $flysystems;
 
     /**
+     * @var \League\Flysystem\FilesystemInterface[]
+     */
+    protected $localFlysystems;
+
+    /**
      * @var string Where file are stored temporary, before being moved into final storage
      */
     protected $tmpPath;
@@ -69,7 +74,7 @@ class StorageManager
      *
      * @param \Service\HttpFileDownloader
      * @param \Symfony\Component\Routing\Generator\UrlGenerator $router
-     * @param array $flysystems
+     * @param \League\Flysystem\FilesystemInterface[] $flysystems
      * @param string $tmpPath
      * @param string $storagePath
      * @param string $hashAlgo
@@ -97,7 +102,6 @@ class StorageManager
 
         $this->webUrl = $webUrl;
 
-
         // TODO Remove me
         if (!$this->storagePath) {
             throw new DirectoryNotFoundException('Storage path defined in "storage.path" configuration option does not exists');
@@ -105,6 +109,13 @@ class StorageManager
 
         if (false === $this->tmpPath) {
             throw new DirectoryNotFoundException('Temporary storage path defined in "storage.tmppath" configuration option does not exists');
+        }
+
+        foreach ($this->flysystems as $k => $fs) {
+            // Method define with plugin \Flysystem\Plugins\IsLocal
+            if ($fs->isLocal()) {
+                $this->localFlysystems[$k] = $fs;
+            }
         }
     }
 
@@ -412,7 +423,7 @@ class StorageManager
             return $this->getFlysystem($file)->readStream($file->getPath());
         } catch (FlysystemFileNotFoundException $e) {
             throw new FileNotFoundException(
-                sprintf('File not found: %s', $file->getPublicId()),
+                sprintf('Storage not found for file: %s', $file->getPublicId()),
                 404,
                 $e
             );
@@ -433,7 +444,7 @@ class StorageManager
             return $flysystem->isLocal();
         } catch (FlysystemFileNotFoundException $e) {
             throw new FileNotFoundException(
-                sprintf('File not found: %s', $file->getPublicId()),
+                sprintf('Storage not found for file: %s', $file->getPublicId()),
                 404,
                 $e
             );
@@ -454,7 +465,7 @@ class StorageManager
             return $this->getFlysystem($file)->delete($file->getPath());
         } catch (FlysystemFileNotFoundException $e) {
             throw new FileNotFoundException(
-                sprintf('File not found: %s', $file->getPublicId()),
+                sprintf('Storage not found for file: %s', $file->getPublicId()),
                 404,
                 $e
             );
@@ -555,6 +566,14 @@ class StorageManager
         if (!$this->getFlysystem($file)->has($file->getPath())) {
             throw new FileNotFoundException($file->getPath());
         }
+    }
+
+    /**
+     * @return \League\Flysystem\FilesystemInterface[]
+     */
+    public function getLocalFlysystem(): array
+    {
+        return $this->localFlysystems;
     }
 
     /**

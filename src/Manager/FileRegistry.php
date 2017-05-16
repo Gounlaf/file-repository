@@ -163,6 +163,14 @@ class FileRegistry
     }
 
     /**
+     * @return int
+     */
+    public function count(): int
+    {
+        return $this->repository->count();
+    }
+
+    /**
      * @param \Model\Entity\File $file
      *
      * @return string

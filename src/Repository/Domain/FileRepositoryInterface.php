@@ -76,4 +76,9 @@ interface FileRepositoryInterface
      * @throws \Doctrine\ORM\EntityNotFoundException
      */
     public function getFileByPublicId(string $publicId): File;
+
+    /**
+     * @return mixed
+     */
+    public function count(): int;
 }
