@@ -105,7 +105,7 @@ abstract class AbstractBaseController
         $inputToken = $request->get('_token') ?? '';
 
         if ($tokenManager->isAdminToken($inputToken)) {
-            $this->token = (new AdminToken())->setId($inputToken);
+            $this->token = (new AdminToken())->setCustomId($inputToken);
             return;
         }
 
@@ -115,7 +115,7 @@ abstract class AbstractBaseController
 
         /** @var TokenRepositoryInterface $repository */
         $repository  = $this->getContainer()->offsetGet('repository.token');
-        $this->token = $repository->getTokenById($inputToken);
+        $this->token = $repository->getTokenByUuid($inputToken);
     }
 
     /**

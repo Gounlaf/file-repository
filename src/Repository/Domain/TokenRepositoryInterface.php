@@ -1,6 +1,8 @@
 <?php declare(strict_types=1);
 
 namespace Repository\Domain;
+
+use Doctrine\Common\Collections\Collection;
 use Model\Entity\Token;
 
 /**
@@ -8,14 +10,25 @@ use Model\Entity\Token;
  */
 interface TokenRepositoryInterface
 {
-    /**
-     * @param string $tokenId
-     * @return null|Token
-     */
-    public function getTokenById($tokenId);
 
     /**
-     * @return Token[]
+     * @param string $uuid
+     *
+     * @return \Model\Entity\Token|null
      */
-    public function getExpiredTokens(): array;
+    public function findTokenByUuid(string $uuid): Token;
+
+    /**
+     * @param string $uuid
+     *
+     * @return \Model\Entity\Token
+     *
+     * @throws \Doctrine\ORM\EntityNotFoundException
+     */
+    public function getTokenByUuid(string $uuid): Token;
+
+    /**
+     * @return \Model\Entity\Token[]|\Doctrine\Common\Collections\Collection
+     */
+    public function findExpiredTokens(): Collection;
 }

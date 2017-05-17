@@ -2,23 +2,32 @@
 
 namespace Model\Entity;
 
+use \DateTime;
+
+use Ramsey\Uuid\UuidInterface;
+
 /**
  * @package Model\Entity
  */
 class Token
 {
     /**
-     * @var string $id
+     * @var int
      */
     private $id;
 
     /**
-     * @var array $roles
+     * @var \Ramsey\Uuid\UuidInterface
+     */
+    private $uuid;
+
+    /**
+     * @var string[]|array
      */
     private $roles = [];
 
     /**
-     * @var \DateTime $creationDate
+     * @var \DateTime
      */
     private $creationDate;
 
@@ -34,25 +43,47 @@ class Token
 
     public function __construct()
     {
-        $this->expirationDate = new \DateTime();
-        $this->creationDate   = new \DateTime();
+        $this->expirationDate = new DateTime();
+        $this->creationDate   = new DateTime();
     }
 
     /**
-     * @return string
+     * @return int
      */
-    public function getId(): string
+    public function getId(): int
     {
         return $this->id;
     }
 
     /**
-     * @param string $id
+     * @param int $id
+     *
      * @return $this
      */
-    public function setId(string $id)
+    public function setId(int $id)
     {
         $this->id = $id;
+
+        return $this;
+    }
+
+    /**
+     * @return \Ramsey\Uuid\UuidInterface
+     */
+    public function getUuid(): UuidInterface
+    {
+        return $this->uuid;
+    }
+
+    /**
+     * @param \Ramsey\Uuid\UuidInterface $uuid
+     *
+     * @return $this
+     */
+    public function setUuid(UuidInterface $uuid)
+    {
+        $this->uuid = $uuid;
+
         return $this;
     }
 
@@ -66,6 +97,7 @@ class Token
 
     /**
      * @param string $roleName
+     *
      * @return bool
      */
     public function hasRole(string $roleName): bool
@@ -75,12 +107,13 @@ class Token
 
     /**
      * @param \DateTime $currentDate
+     *
      * @return bool
      */
-    public function isNotExpired(\DateTime $currentDate = null)
+    public function isNotExpired(DateTime $currentDate = null)
     {
-        if (!$currentDate instanceof \DateTime) {
-            $currentDate = new \DateTime();
+        if (!$currentDate instanceof DateTime) {
+            $currentDate = new DateTime();
         }
 
         return $this->getExpirationDate()->getTimestamp() >= $currentDate->getTimestamp();
@@ -89,7 +122,7 @@ class Token
     /**
      * @return \DateTime
      */
-    public function getCreationDate(): \DateTime
+    public function getCreationDate(): DateTime
     {
         return $this->creationDate;
     }
@@ -97,48 +130,56 @@ class Token
     /**
      * @return \DateTime
      */
-    public function getExpirationDate(): \DateTime
+    public function getExpirationDate(): DateTime
     {
         return $this->expirationDate;
     }
 
     /**
      * @param array $roles
+     *
      * @return Token
      */
     public function setRoles($roles)
     {
         $this->roles = $roles;
+
         return $this;
     }
 
     /**
      * @param \DateTime $creationDate
+     *
      * @return Token
      */
-    public function setCreationDate(\DateTime $creationDate)
+    public function setCreationDate(DateTime $creationDate)
     {
         $this->creationDate = $creationDate;
+
         return $this;
     }
 
     /**
      * @param \DateTime $expirationDate
+     *
      * @return Token
      */
-    public function setExpirationDate(\DateTime $expirationDate)
+    public function setExpirationDate(DateTime $expirationDate)
     {
         $this->expirationDate = $expirationDate;
+
         return $this;
     }
 
     /**
      * @param array $data
+     *
      * @return Token
      */
     public function setData(array $data)
     {
         $this->data = $data;
+
         return $this;
     }
 

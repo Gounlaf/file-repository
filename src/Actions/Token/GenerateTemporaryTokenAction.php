@@ -82,7 +82,7 @@ class GenerateTemporaryTokenAction extends AbstractBaseAction
         );
 
         return [
-            'tokenId' => $token->getId(),
+            'token' => $token->getUuid(),
             'expires' => $token->getExpirationDate()->format('Y-m-d H:i:s'),
         ];
     }

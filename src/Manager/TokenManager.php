@@ -2,7 +2,10 @@
 
 namespace Manager;
 
+use \DateTime;
+
 use Doctrine\ORM\EntityManager;
+
 use Factory\TokenFactory;
 use Manager\Domain\TokenManagerInterface;
 use Model\Entity\Token;
@@ -14,29 +17,29 @@ use Repository\Domain\TokenRepositoryInterface;
 class TokenManager implements TokenManagerInterface
 {
     /**
-     * @var TokenRepositoryInterface $repository
+     * @var \Repository\Domain\TokenRepositoryInterface
      */
     private $repository;
 
     /**
-     * @var string $adminToken
+     * @var string
      */
     private $adminToken;
 
     /**
-     * @var TokenFactory $factory
+     * @var \Factory\TokenFactory
      */
     private $factory;
 
     /**
-     * @var EntityManager $entityManager
+     * @var \Doctrine\ORM\EntityManager
      */
-    private $entityManager;
+    private $em;
 
     /**
-     * @param TokenRepositoryInterface $repository
-     * @param TokenFactory $factory
-     * @param EntityManager $entityManager
+     * @param \Repository\Domain\TokenRepositoryInterface $repository
+     * @param \Factory\TokenFactory $factory
+     * @param \Doctrine\ORM\EntityManager $entityManager
      * @param string $adminToken
      */
     public function __construct(
@@ -45,31 +48,33 @@ class TokenManager implements TokenManagerInterface
         EntityManager $entityManager,
         string $adminToken
     ) {
-        $this->repository    = $repository;
-        $this->factory       = $factory;
-        $this->entityManager = $entityManager;
-        $this->adminToken    = $adminToken;
+        $this->repository = $repository;
+        $this->factory    = $factory;
+        $this->em         = $entityManager;
+        $this->adminToken = $adminToken;
     }
 
     /**
      * @inheritdoc
      */
-    public function isTokenValid(string $tokenId, array $requiredRoles = []): bool
+    public function isTokenValid(string $tokenStr, array $requiredRoles = []): bool
     {
-        if ($tokenId === $this->getAdminToken()) {
+        if ($this->isAdminToken($tokenStr)) {
             return true;
         }
 
-        $token = $this->repository->getTokenById($tokenId);
+        if (empty($requiredRoles)) {
+            return false;
+        }
 
-        if (!$token instanceof Token || empty($requiredRoles)) {
+        $token = $this->repository->findTokenByUuid($tokenStr);
+        if (empty($token) || !$token->isNotExpired()) {
             return false;
         }
 
         // at least one role must match
         foreach ($requiredRoles as $roleName) {
-
-            if ($token->hasRole($roleName) && $token->isNotExpired()) {
+            if ($token->hasRole($roleName)) {
                 return true;
             }
         }
@@ -88,12 +93,12 @@ class TokenManager implements TokenManagerInterface
     /**
      * @inheritdoc
      */
-    public function generateNewToken(array $roles, \DateTime $expires, array $data = []): Token
+    public function generateNewToken(array $roles, DateTime $expires, array $data = []): Token
     {
         $token = $this->factory->createNewToken($roles, $expires, $data);
 
-        $this->entityManager->persist($token);
-        $this->entityManager->flush($token);
+        $this->em->persist($token);
+        $this->em->flush($token);
 
         return $token;
     }
@@ -103,8 +108,8 @@ class TokenManager implements TokenManagerInterface
      */
     public function removeToken(Token $token)
     {
-        $this->entityManager->remove($token);
-        $this->entityManager->flush($token);
+        $this->em->remove($token);
+        $this->em->flush($token);
     }
 
     /**

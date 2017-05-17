@@ -3,15 +3,15 @@ Model\Entity\Token:
     table: tokens
     id:
         id:
-            type: guid
-            unique: true
-            nullable: false
-            id: true
-            length: 36
+            type: integer
             generator:
-                strategy: UUID
-
+                strategy: IDENTITY
     fields:
+        uuid:
+            type: uuid_binary
+            nullable: false
+            unique: true
+
         expirationDate:
             type: datetime
             column: expiration_date

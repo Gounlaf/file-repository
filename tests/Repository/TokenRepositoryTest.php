@@ -13,7 +13,7 @@ use Tests\WolnosciowiecTestCase;
 class TokenRepositoryTest extends WolnosciowiecTestCase
 {
     /**
-     * @see TokenRepositoryInterface::getTokenById()
+     * @see TokenRepositoryInterface::getTokenByUuid()
      * @see TokenRepositoryInterface::getExpiredTokens()
      */
     public function testTokenFlow()
@@ -31,7 +31,7 @@ class TokenRepositoryTest extends WolnosciowiecTestCase
         $token = $tokenManager->generateNewToken(['militant'], (new \DateTime())->modify('-30 m'));
 
         // getTokenById()
-        $this->assertSame($token->getId(), $repository->getTokenById($token->getId())->getId());
+        $this->assertSame($token->getId(), $repository->getTokenByUuid($token->getId())->getId());
 
         // getExpiredTokens()
         $this->assertSame($token->getId(), $repository->getExpiredTokens()[0]->getId());

@@ -29,21 +29,26 @@ class ClearExpiredTokensCommand extends BaseCommand
     {
         /**
          * @var \Repository\Domain\TokenRepositoryInterface $repository
-         * @var \Manager\Domain\TokenManagerInterface       $manager
+         * @var \Manager\Domain\TokenManagerInterface $manager
          */
         $repository = $this->getApp()['repository.token'];
         $manager    = $this->getApp()['manager.token'];
 
         $output->writeln('Cleaning up expired tokens...');
 
-        foreach ($repository->getExpiredTokens() as $token) {
-            $this->processed++;
+        foreach ($repository->findExpiredTokens() as $token) {
+            $date = $token->getExpirationDate();
+            $id   = $token->getId();
 
-            $output->writeln(
-                '[' . $token->getExpirationDate()->format('Y-m-d H:i:s') . '] ' .
-                '<comment>Removing token ' . $token->getId() . '</comment>'
-            );
             $manager->removeToken($token);
+
+            $output->writeln(sprintf(
+                '[%s] <comment>Removing token %s</comment>',
+                $date->format('Y-m-d H:i:s'),
+                $id
+            ));
+
+            $this->processed++;
         }
     }
 

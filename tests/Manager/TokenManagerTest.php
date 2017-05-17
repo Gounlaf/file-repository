@@ -47,12 +47,12 @@ class TokenManagerTest extends WolnosciowiecTestCase
     public function testIsTokenValid(Token $token)
     {
         $this->assertTrue(
-            $this->getManager()->isTokenValid($token->getId(), ['syndicate_distribution']),
+            $this->getManager()->isTokenValid($token->getUuid()->toString(), ['syndicate_distribution']),
             'Failed to match that the token is valid for "syndicate_distribution" role'
         );
 
         $this->assertFalse(
-            $this->getManager()->isTokenValid($token->getId(), ['production']),
+            $this->getManager()->isTokenValid($token->getUuid()->toString(), ['production']),
             'Required role is "production", but the token was not registered with it, ' .
             'so the validation should return false'
         );
@@ -78,13 +78,13 @@ class TokenManagerTest extends WolnosciowiecTestCase
     {
         /** @var TokenRepositoryInterface $repository */
         $repository = $this->app->offsetGet('repository.token');
-        $token = $repository->getTokenById($tokenId);
+        $token = $repository->getTokenByUuid($tokenId);
         $tokenCopy = clone $token;
 
         $this->getManager()->removeToken($token);
 
         $this->assertFalse(
-            $this->getManager()->isTokenValid($tokenCopy->getId(), ['syndicate_distribution']),
+            $this->getManager()->isTokenValid($tokenCopy->getUuid()->toString(), ['syndicate_distribution']),
             'Failed to match that the token is valid for "syndicate_distribution" role'
         );
     }

@@ -2,11 +2,12 @@
 
 namespace Controllers\Auth;
 
-use Commands\ClearExpiredTokensCommand;
-use Controllers\AbstractBaseController;
 use Symfony\Component\Console\Input\StringInput;
 use Symfony\Component\Console\Output\NullOutput;
 use Symfony\Component\HttpFoundation\JsonResponse;
+
+use Commands\ClearExpiredTokensCommand;
+use Controllers\AbstractBaseController;
 
 /**
  * Clearing expired tokens
@@ -17,9 +18,9 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 class ExpiredTokensController extends AbstractBaseController
 {
     /**
-     * @return JsonResponse
+     * @return \Symfony\Component\HttpFoundation\JsonResponse
      */
-    public function clearExpiredTokensAction()
+    public function clearExpiredTokensAction(): JsonResponse
     {
         $command = new ClearExpiredTokensCommand();
         $command->setApp($this->getContainer());

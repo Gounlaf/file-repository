@@ -54,5 +54,28 @@ class FileEnhancement extends BaseMigration
         $table->removeIndex(['contentHash']);
 
         $table->save();
+
+        // Recreate tokens table
+
+        $table = $this->table($this->createTableName('tokens'), ['id' => false]);
+        $table->drop();
+
+        $table = $this->table($this->createTableName('tokens'));
+
+        $table->addColumn('uuid', 'binary', [
+            'length' => 16,
+            'null'   => false,
+        ]);
+
+        $table->addColumn('roles', 'text', [
+            'length' => 1024,
+        ]);
+
+        $table->addColumn('data', 'text');
+
+        $table->addColumn('expiration_date', 'datetime');
+        $table->addColumn('creation_date', 'datetime');
+
+        $table->create();
     }
 }
