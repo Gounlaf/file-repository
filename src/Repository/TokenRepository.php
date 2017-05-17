@@ -34,11 +34,19 @@ class TokenRepository implements TokenRepositoryInterface
     /**
      * @inheritDoc
      */
-    public function findTokenByUuid(string $uuid): Token
+    public function findTokenByUuid(string $uuid)
     {
-        return $this->repository()->matching(Criteria::create()
+        $collection = $this->repository()->matching(Criteria::create()
             ->where(Criteria::expr()->eq('uuid', $uuid))
-        )->first();
+        );
+
+        $token = $collection->first();
+
+        if (empty($token)) {
+            return null;
+        }
+
+        return $token;
     }
 
     /**

@@ -16,7 +16,7 @@ interface TokenRepositoryInterface
      *
      * @return \Model\Entity\Token|null
      */
-    public function findTokenByUuid(string $uuid): Token;
+    public function findTokenByUuid(string $uuid);
 
     /**
      * @param string $uuid

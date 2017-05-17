@@ -125,7 +125,7 @@ class FileRepository implements FileRepositoryInterface
     /**
      * @inheritDoc
      */
-    public function findFileByPublicId(string $publicId): File
+    public function findFileByPublicId(string $publicId)
     {
         $collection = $this->repository()->matching(Criteria::create()
             ->where(Criteria::expr()->eq('publicId', $publicId))

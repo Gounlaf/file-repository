@@ -63,7 +63,7 @@ interface FileRepositoryInterface
      *
      * @return \Model\Entity\File|null
      */
-    public function findFileByPublicId(string $publicId): File;
+    public function findFileByPublicId(string $publicId);
 
     /**
      * Retrieve a File entity by it's public id. File must exist, otherwise an
