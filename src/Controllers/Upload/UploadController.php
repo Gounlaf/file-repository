@@ -33,7 +33,7 @@ class UploadController extends AbstractBaseController implements UploadControlle
     private $allowedMimeTypes = null;
 
     /**
-     * @return JsonResponse|Response
+     * @return \Symfony\Component\HttpFoundation\Response|\Symfony\Component\HttpFoundation\JsonResponse
      */
     public function uploadAction(): Response
     {
@@ -103,11 +103,13 @@ class UploadController extends AbstractBaseController implements UploadControlle
      */
     private function getTags()
     {
-        if ($this->getToken() instanceof AdminToken) {
+        $token = $this->getToken();
+
+        if ($token instanceof AdminToken) {
             return array_filter((array)$this->getRequest()->get('tags'));
         }
 
-        return $this->getToken()->getTags();
+        return $token->getTags();
     }
 
     /**

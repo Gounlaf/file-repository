@@ -2,22 +2,24 @@
 
 namespace Controllers\Upload\UserForm;
 
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
+
 use Actions\Upload\UserForm\Base64UploadAction;
 use Controllers\AbstractBaseController;
 use Controllers\Upload\UploadController;
 use Exception\Upload\UploadException;
-use GuzzleHttp\Psr7\Response;
 use Model\Entity\Token;
 use Model\Permissions\Roles;
 use Model\Request\ImageJsonPayload;
-use Symfony\Component\HttpFoundation\JsonResponse;
-use Symfony\Component\HttpFoundation\Request;
 
 /**
  * User form handler: Image upload
  * ===============================
  *
  * @package Controllers\Upload
+ *
+ * @method \Model\Request\ImageJsonPayload getPayload()
  */
 class ImageUploadFormController extends AbstractBaseController
 {
@@ -27,9 +29,9 @@ class ImageUploadFormController extends AbstractBaseController
     public function showFormAction(): string
     {
         return $this->getRenderer()->render('@app/ImageUpload.html.twig', [
-            'tokenId' => $this->getRequest()->get('_token'),
-            'backUrl' => $this->getRequest()->get('back_url'),
-            'aspectRatio' => $this->getAspectRatio((float)$this->getRequest()->get('aspectRatio'))
+            'tokenId'     => $this->request->get('_token'),
+            'backUrl'     => $this->request->get('back_url'),
+            'aspectRatio' => $this->getAspectRatio((float)$this->request->get('aspectRatio'))
         ]);
     }
 
@@ -45,6 +47,7 @@ class ImageUploadFormController extends AbstractBaseController
      * Normalize input aspect ratio
      *
      * @param float $ratio
+     *
      * @return float
      */
     protected function getAspectRatio(float $ratio): float
@@ -65,18 +68,10 @@ class ImageUploadFormController extends AbstractBaseController
     }
 
     /**
-     * @return ImageJsonPayload
-     */
-    protected function getPayload()
-    {
-        return parent::getPayload();
-    }
-
-    /**
      * This upload action will emulate the request
      * and push it to the regular upload controller
      *
-     * @return Response
+     * @return \Symfony\Component\HttpFoundation\JsonResponse|\Symfony\Component\HttpFoundation\Response
      */
     public function uploadAction()
     {
@@ -85,20 +80,15 @@ class ImageUploadFormController extends AbstractBaseController
         $result           = $userUploadAction->execute();
 
         // use a regular upload controller
-        $request = new Request(
-            [
-                '_token'    => $this->getRequest()->get('_token'),
-                'file_name' => $result['fileName'],
-                'tags'      => $this->getToken() instanceof Token
-                    ? $this->getToken()->getTags()
-                    : [],
-            ]
-        );
+        $request = new Request([
+            '_token'    => $this->request->get('_token'),
+            'file_name' => $result['fileName'],
+            'tags'      => $this->token instanceof Token ? $this->token->getTags() : [],
+        ]);
 
         try {
-            $uploadController = new UploadController($this->getContainer(), true);
+            $uploadController = new UploadController($this->getContainer(), $request);
             $uploadController->setStrictUploadMode(false);
-            $uploadController->setRequest($request);
             $uploadController->setAllowedMimeTypes([
                 'jpg' => 'image/jpeg',
                 'png' => 'image/png',
@@ -106,7 +96,6 @@ class ImageUploadFormController extends AbstractBaseController
             ]);
 
             return $uploadController->uploadAction();
-
         } catch (UploadException $e) {
             return new JsonResponse([
                 'success' => false,

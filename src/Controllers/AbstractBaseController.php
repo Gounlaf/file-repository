@@ -18,36 +18,30 @@ use Repository\Domain\TokenRepositoryInterface;
 abstract class AbstractBaseController
 {
     /**
-     * @var Application $container
+     * @var \Silex\Application $container
      */
-    private $container;
+    protected $container;
 
     /**
-     * @var Request $request
+     * @var \Symfony\Component\HttpFoundation\Request $request
      */
-    private $request;
+    protected $request;
 
-    /**
-     * @var bool $isInternalRequest
-     */
-    private $isInternalRequest = false;
-
-    private $payload;
+    protected $payload;
 
     /**
      * @var \Model\Entity\Token|null
      */
-    private $token;
+    protected $token;
 
     /**
-     * @param Application $app
-     * @param bool $isInternalRequest
+     * @param \Silex\Application $app
+     * @param \Symfony\Component\HttpFoundation\Request $internalRequest
      */
-    public function __construct(Application $app, bool $isInternalRequest = false)
+    public function __construct(Application $app, Request $internalRequest = null)
     {
         $this->container = $app;
-        $this->request   = $app['request_stack']->getCurrentRequest();
-        $this->setIsInternalRequest($isInternalRequest);
+        $this->request   = !empty($internalRequest) ? $internalRequest : $app['request_stack']->getCurrentRequest();
 
         $this->assertValidateAccessRights($this->request, $app['manager.token'], $this->getRequiredRoleNames());
     }
@@ -110,9 +104,8 @@ abstract class AbstractBaseController
     ) {
         $inputToken = $request->get('_token') ?? '';
 
-        if ($this->isInternalRequest === true || $tokenManager->isAdminToken($inputToken)) {
+        if ($tokenManager->isAdminToken($inputToken)) {
             $this->token = (new AdminToken())->setId($inputToken);
-
             return;
         }
 
@@ -126,18 +119,6 @@ abstract class AbstractBaseController
     }
 
     /**
-     * @param bool $isInternalRequest
-     *
-     * @return $this
-     */
-    public function setIsInternalRequest(bool $isInternalRequest)
-    {
-        $this->isInternalRequest = $isInternalRequest;
-
-        return $this;
-    }
-
-    /**
      * @return \Silex\Application
      */
     public function getContainer()
@@ -148,21 +129,9 @@ abstract class AbstractBaseController
     /**
      * @return \Symfony\Component\HttpFoundation\Request
      */
-    public function getRequest()
+    public function getRequest(): Request
     {
         return $this->request;
-    }
-
-    /**
-     * @param \Symfony\Component\HttpFoundation\Request $request
-     *
-     * @return $this
-     */
-    public function setRequest($request)
-    {
-        $this->request = $request;
-
-        return $this;
     }
 
     /**
