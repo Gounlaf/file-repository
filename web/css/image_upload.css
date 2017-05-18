@@ -27,7 +27,7 @@ img {
 
 }
 
-.menu_button {
+.menu_button, .menu_result {
     padding-top: 13px;
     float: left;
     display: block;
@@ -42,9 +42,18 @@ img {
     cursor: pointer;
 }
 
-.menu_button:hover {
+.menu_result {
+    width: auto;
+    padding-top: 0;
+    margin-left: 13px;
+    padding-left: 13px;
+    padding-right: 13px;
+}
+
+.menu_button:hover, .menu_result:hover, .menu_result:visited {
     background-color: #0074d9;
     color: #fff;
+    text-decoration: none;
 }
 
 .fa {
