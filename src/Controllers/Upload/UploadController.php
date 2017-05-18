@@ -26,7 +26,7 @@ class UploadController extends AbstractBaseController implements UploadControlle
     private $strictUploadMode = true;
 
     /**
-     * @var array
+     * @var \Model\AllowedMimeTypes
      *
      * Don't get this property directly; use getter instead
      */
@@ -55,7 +55,7 @@ class UploadController extends AbstractBaseController implements UploadControlle
         );
 
         $action->setStrictUploadMode($this->isStrictUploadMode());
-        $action->setAllowedMimes($this->getAllowedMimes());
+        $action->setAllowedMimes($this->getAllowedMimes()->all());
 
         $result = $action->execute();
 
@@ -84,18 +84,18 @@ class UploadController extends AbstractBaseController implements UploadControlle
     }
 
     /**
-     * @return array
+     * @return \Model\AllowedMimeTypes
      */
     private function getAllowedMimes()
     {
-        if (null !== $this->allowedMimeTypes) {
+        if (!empty($this->allowedMimeTypes)) {
             return $this->allowedMimeTypes;
         }
 
-        return (new AllowedMimeTypes(
+        return new AllowedMimeTypes(
             $this->getContainer()->offsetGet('storage.allowed_types'),
             $this->getToken()->getAllowedMimeTypes()
-        ))->all();
+        );
     }
 
     /**
@@ -147,7 +147,7 @@ class UploadController extends AbstractBaseController implements UploadControlle
     /**
      * @param boolean $strictUploadMode
      *
-     * @return UploadController
+     * @return \Controllers\Upload\UploadController
      */
     public function setStrictUploadMode(bool $strictUploadMode): UploadController
     {
@@ -165,13 +165,13 @@ class UploadController extends AbstractBaseController implements UploadControlle
     }
 
     /**
-     * @param array|null $allowedMimeTypes
+     * @param array $allowedMimeTypes
      *
-     * @return UploadController
+     * @return \Controllers\Upload\UploadController
      */
-    public function setAllowedMimeTypes($allowedMimeTypes): UploadController
+    public function setAllowedMimeTypes(array $allowedMimeTypes): UploadController
     {
-        $this->allowedMimeTypes = $allowedMimeTypes;
+        $this->allowedMimeTypes = new AllowedMimeTypes($allowedMimeTypes, array());
 
         return $this;
     }
