@@ -298,6 +298,8 @@ class StorageManager
             $success = rename($rawData['tmp_name'], $tmpTarget);
         }
 
+        $rawData['tmp_name'] = $tmpTarget;
+
         if (!$success) {
             throw new UploadException('Cannot save uploaded file');
         }
@@ -326,6 +328,8 @@ class StorageManager
             if (is_resource($stream)) {
                 fclose($stream);
             }
+
+            $this->cleanTmpFile($rawData);
         }
 
         $originalName = new \SplFileInfo($rawData['name']);
