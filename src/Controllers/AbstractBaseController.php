@@ -3,6 +3,7 @@
 namespace Controllers;
 
 use Silex\Application;
+use Stringy\Stringy;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\Serializer\SerializerInterface;
@@ -104,15 +105,27 @@ abstract class AbstractBaseController
         TokenManagerInterface $tokenManager,
         array $requiredRoles = []
     ) {
-        $inputToken = $request->get('_token') ?? '';
+        $inputToken = $request->get('_token') ?? null;
+        $authorizationToken = $request->headers->get('Authorization');
 
-        if ($tokenManager->isAdminToken($inputToken)) {
-            $this->token = (new AdminToken())->setCustomId($inputToken);
+        if (!empty($authorizationToken)) {
+            $authorizationToken = (string) Stringy::create($authorizationToken)
+                ->removeLeft('Bearer ');
+        }
+
+        if (!empty($inputToken) && !empty($authorizationToken)) {
+            throw new AccessDeniedHttpException('Access denied (both _token and Authorization header are filled)');
+        }
+
+        $token = $inputToken ?? $authorizationToken;
+
+        if ($tokenManager->isAdminToken($token)) {
+            $this->token = (new AdminToken())->setCustomId($token);
             return;
         }
 
-        if (!$tokenManager->isTokenValid($inputToken, $requiredRoles)) {
-            throw new AccessDeniedHttpException('Access denied, please verify the "_token" parameter');
+        if (!$tokenManager->isTokenValid($token, $requiredRoles)) {
+            throw new AccessDeniedHttpException('Access denied, please verify the "_token" parameter or Authorization header');
         }
 
         /** @var TokenRepositoryInterface $repository */
