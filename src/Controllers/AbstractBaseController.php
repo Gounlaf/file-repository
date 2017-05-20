@@ -4,7 +4,7 @@ namespace Controllers;
 
 use Silex\Application;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\Security\Core\Exception\AccessDeniedException;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\Serializer\SerializerInterface;
 
 use Actions\AbstractBaseAction;
@@ -96,6 +96,8 @@ abstract class AbstractBaseController
      * @param \Symfony\Component\HttpFoundation\Request $request
      * @param \Manager\Domain\TokenManagerInterface $tokenManager
      * @param array $requiredRoles
+     *
+     * @throws \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException
      */
     public function assertValidateAccessRights(
         Request $request,
@@ -110,7 +112,7 @@ abstract class AbstractBaseController
         }
 
         if (!$tokenManager->isTokenValid($inputToken, $requiredRoles)) {
-            throw new AccessDeniedException('Access denied, please verify the "_token" parameter');
+            throw new AccessDeniedHttpException('Access denied, please verify the "_token" parameter');
         }
 
         /** @var TokenRepositoryInterface $repository */
