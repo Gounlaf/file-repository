@@ -3,6 +3,7 @@
 namespace Repository;
 
 use Doctrine\ORM\EntityManager;
+
 use Model\Entity\Tag;
 use Repository\Domain\TagRepositoryInterface;
 
@@ -11,11 +12,13 @@ use Repository\Domain\TagRepositoryInterface;
  */
 class TagRepository implements TagRepositoryInterface
 {
-    /** @var EntityManager $em */
+    /**
+     * @var \Doctrine\ORM\EntityManager
+     */
     private $em;
 
     /**
-     * @param EntityManager $em
+     * @param \Doctrine\ORM\EntityManager $em
      */
     public function __construct(EntityManager $em)
     {

@@ -3,6 +3,7 @@
 namespace Repository\Domain;
 
 use Doctrine\Common\Collections\Collection;
+
 use Model\Entity\Token;
 
 /**

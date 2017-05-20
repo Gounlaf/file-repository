@@ -8,6 +8,7 @@ use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\EntityNotFoundException;
 use Doctrine\ORM\EntityRepository;
 use Doctrine\ORM\Tools\Pagination\Paginator;
+
 use Manager\StorageManager;
 use Model\Entity\File;
 use Model\Request\SearchQueryPayload;
@@ -19,18 +20,18 @@ use Repository\Domain\FileRepositoryInterface;
 class FileRepository implements FileRepositoryInterface
 {
     /**
-     * @var StorageManager $storageManager
+     * @var \Manager\StorageManager
      */
     private $storageManager;
 
     /**
-     * @var EntityManager $em
+     * @var \Doctrine\ORM\EntityManager
      */
     private $em;
 
     /**
-     * @param StorageManager $manager
-     * @param EntityManager $em
+     * @param \Manager\StorageManager $manager
+     * @param \Doctrine\ORM\EntityManager $em
      */
     public function __construct(StorageManager $manager, EntityManager $em)
     {

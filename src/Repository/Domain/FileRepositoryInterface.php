@@ -4,6 +4,7 @@ namespace Repository\Domain;
 
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Tools\Pagination\Paginator;
+
 use Model\Entity\File;
 use Model\Request\SearchQueryPayload;
 

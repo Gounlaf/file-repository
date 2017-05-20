@@ -7,9 +7,9 @@ use \DateTime;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\Common\Collections\Criteria;
 use Doctrine\ORM\EntityManager;
-
 use Doctrine\ORM\EntityNotFoundException;
 use Doctrine\ORM\EntityRepository;
+
 use Model\Entity\Token;
 use Repository\Domain\TokenRepositoryInterface;
 

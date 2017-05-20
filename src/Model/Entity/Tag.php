@@ -1,10 +1,13 @@
 <?php declare(strict_types=1);
 
 namespace Model\Entity;
+
+use \DateTime;
+
 use Doctrine\Common\Collections\ArrayCollection;
 
 /**
- * @package Model\Entity\Tag
+ * @package Model\Entity
  */
 class Tag
 {
@@ -24,13 +27,13 @@ class Tag
     private $dateAdded;
 
     /**
-     * @var File[]|ArrayCollection $files
+     * @var \Model\Entity\File[]|\Doctrine\Common\Collections\Collection $files
      */
     private $files;
 
     public function __construct()
     {
-        $this->dateAdded = new \DateTime();
+        $this->dateAdded = new DateTime();
         $this->files     = new ArrayCollection();
     }
 
@@ -45,7 +48,7 @@ class Tag
     /**
      * @return \DateTime
      */
-    public function getDateAdded(): \DateTime
+    public function getDateAdded(): DateTime
     {
         return $this->dateAdded;
     }
@@ -62,7 +65,7 @@ class Tag
      * @param string $name
      * @return Tag
      */
-    public function setName(string $name)
+    public function setName(string $name): Tag
     {
         $this->name = $name;
         return $this;
@@ -72,7 +75,7 @@ class Tag
      * @param \DateTime $dateAdded
      * @return Tag
      */
-    public function setDateAdded(\DateTime $dateAdded)
+    public function setDateAdded(DateTime $dateAdded): Tag
     {
         $this->dateAdded = $dateAdded;
         return $this;
@@ -82,7 +85,7 @@ class Tag
      * @param string $id
      * @return Tag
      */
-    public function setId(string $id)
+    public function setId(string $id): Tag
     {
         $this->id = $id;
         return $this;
