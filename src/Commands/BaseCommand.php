@@ -35,12 +35,12 @@ abstract class BaseCommand extends Command
      */
     public function execute(InputInterface $input, OutputInterface $output)
     {
-        @define('ENV', $input->getOption('env'));
-
-        $this->app = require __DIR__ . '/../app.php';
-        require __DIR__ . '/../../config/' . ENV . '.php';
-        require __DIR__ . '/../../src/services.php';
-        require __DIR__ . '/../../src/controllers.php';
+//        @define('ENV', $input->getOption('env'));
+//
+//        $this->app = require __DIR__ . '/../app.php';
+//        require __DIR__ . '/../../config/' . ENV . '.php';
+//        require __DIR__ . '/../../src/services.php';
+//        require __DIR__ . '/../../src/controllers.php';
 
         return $this->executeCommand($input, $output);
     }

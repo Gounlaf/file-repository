@@ -1,16 +1,26 @@
 <?php declare(strict_types=1);
 
-use Phinx\Migration\AbstractMigration;
+namespace Db\Migrations;
+
+use Doctrine\DBAL\Migrations\AbstractMigration;
+use Doctrine\DBAL\Migrations\Version;
+use Doctrine\ORM\Events;
+
+use Doctrine\Extension\TablePrefix;
 
 abstract class BaseMigration extends AbstractMigration
 {
-    protected function getTableNamePrefix()
-    {
-        return $GLOBALS['app']['db.options']['prefix'] ?? '';
-    }
+    protected $tablePrefix = '';
 
-    protected function createTableName(string $tableName)
+    public function __construct(Version $version)
     {
-        return $this->getTableNamePrefix() . $tableName;
+        parent::__construct($version);
+
+        foreach ($this->connection->getEventManager()->getListeners(Events::loadClassMetadata) as $listener) {
+            if ($listener instanceof TablePrefix) {
+                $this->tablePrefix = $listener->getPrefix();
+                break;
+            }
+        }
     }
 }

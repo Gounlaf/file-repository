@@ -21,6 +21,14 @@ class TablePrefix
         $this->prefix = $prefix;
     }
 
+    /**
+     * @return string
+     */
+    public function getPrefix(): string
+    {
+        return $this->prefix;
+    }
+
     public function loadClassMetadata(LoadClassMetadataEventArgs $eventArgs)
     {
         /* @var $classMetadata \Doctrine\ORM\Mapping\ClassMetadataInfo */
@@ -34,7 +42,7 @@ class TablePrefix
 
         foreach ($classMetadata->getAssociationMappings() as $fieldName => $mapping) {
             if ($mapping['type'] == ClassMetadataInfo::MANY_TO_MANY && $mapping['isOwningSide']) {
-                $mappedTableName = $mapping['joinTable']['name'];
+                $mappedTableName                                                     = $mapping['joinTable']['name'];
                 $classMetadata->associationMappings[$fieldName]['joinTable']['name'] = $this->prefix . $mappedTableName;
             }
         }
