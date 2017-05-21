@@ -21,7 +21,7 @@ Model\Entity\File:
             length: 271
         contentHash:
             type: string
-            length: 128
+            length: 64
             nullable: false
         dateAdded:
             type: datetime

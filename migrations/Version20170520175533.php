@@ -11,12 +11,28 @@ class Version20170520175533 extends BaseMigration
      */
     public function up(Schema $schema)
     {
-        $table = $schema->getTable('core_migrations');
+        $tTags        = $this->tablePrefix . 'tags';
+        $tTagsNew     = $this->tablePrefix . 'tags_new';
+        $tFileTags    = $this->tablePrefix . 'file_tags';
+        $tFileTagsNew = $this->tablePrefix . 'file_tags_new';
 
-        $table->dropColumn('migration_name');
-        $table->dropColumn('start_time');
-        $table->dropColumn('end_time');
-        $table->dropColumn('break_point');
+        if ($schema->hasTable($tFileTagsNew) && $schema->hasTable($tTagsNew)) {
+            foreach ($this->connection->fetchAll('SELECT * FROM ' . $tTags . ' ORDER BY dateAdded ASC') as $row) {
+                $this->addSql(
+                    'INSERT INTO ' . $tTagsNew . ' (name,dateAdded) VALUES (:name, :dateAdded)',
+                    ['name' => $row['name'], 'dateAdded' => $row['dateAdded']]
+                );
+            }
+
+            foreach ($this->connection->fetchAll('SELECT * FROM ' . $tFileTags . ' ORDER BY file_id') as $row) {
+                $this->addSql(
+                    'INSERT INTO ' . $tFileTagsNew
+                    . ' SELECT :fileId, ' . $tTagsNew . '.id FROM ' . $tTagsNew . ' WHERE name = (SELECT name FROM ' . $tTags . ' WHERE id = :oldTagId)',
+
+                    ['fileId' => $row['file_id'], 'oldTagId' => $row['tag_id']]
+                );
+            }
+        }
     }
 
     /**
@@ -24,6 +40,6 @@ class Version20170520175533 extends BaseMigration
      */
     public function down(Schema $schema)
     {
-        // NOOP
+
     }
 }

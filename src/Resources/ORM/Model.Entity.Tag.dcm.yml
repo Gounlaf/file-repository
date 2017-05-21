@@ -1,13 +1,11 @@
 Model\Entity\Tag:
     type: entity
     table: tags
-
     id:
         id:
-            type: guid
-            length: 36
+            type: integer
             generator:
-                strategy: UUID
+                strategy: IDENTITY
 
     fields:
         name:

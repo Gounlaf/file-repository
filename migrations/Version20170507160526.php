@@ -4,7 +4,6 @@ namespace Db\Migrations;
 
 use Doctrine\DBAL\Schema\Index;
 use Doctrine\DBAL\Schema\Schema;
-use Doctrine\DBAL\Types\Type;
 
 class Version20170507160526 extends BaseMigration
 {
@@ -25,7 +24,24 @@ class Version20170507160526 extends BaseMigration
      */
     public function down(Schema $schema)
     {
+        // For a "fresh install", roll-backing this migration will create old structure of file_registry
+
         $table = $schema->getTable($this->tablePrefix . 'file_registry');
+
+        $indexesToRemove = [
+            new Index('index_uuid', array('uuid')),
+            new Index('index_publicId', array('publicId')),
+        ];
+
+        foreach ($table->getIndexes() as $index) {
+            foreach ($indexesToRemove as $i => $indexToRemove) {
+                if ($index->isFullfilledBy($indexToRemove)) {
+                    $table->dropIndex($index->getName());
+                    unset($indexesToRemove[$i]);
+                    break;
+                }
+            }
+        }
 
         $table->changeColumn('fileName', [
             'length'  => 64,
@@ -52,22 +68,16 @@ class Version20170507160526 extends BaseMigration
         $table->dropColumn('size');
         $table->dropColumn('status');
 
-        $indexesToRemove = [
-            new Index('index_uuid', array('uuid')),
-            new Index('index_publicId', array('publicId')),
-        ];
-
-        foreach ($table->getIndexes() as $index) {
-            foreach ($indexesToRemove as $i => $indexToRemove) {
-                if ($index->isFullfilledBy($indexToRemove)) {
-                    $table->dropIndex($index->getName());
-                    unset($indexesToRemove[$i]);
-                    break;
-                }
-            }
-        }
 
         (new Version20170203193950($this->version))->up($schema);
+
+        if ($schema->hasTable($this->tablePrefix . 'tags_new')) {
+            $schema->dropTable($this->tablePrefix . 'tags_new');
+        }
+
+        if ($schema->hasTable($this->tablePrefix . 'file_tags_new')) {
+            $schema->dropTable($this->tablePrefix . 'file_tags_new');
+        }
     }
 
     /**
@@ -162,6 +172,32 @@ class Version20170507160526 extends BaseMigration
         $table->addColumn('creation_date', 'datetime');
 
         $table->setPrimaryKey(['id']);
+
+        //
+        // Temporary tables related to tags
+        //
+
+        // Tags
+        $tableTmpTags = $schema->createTable($this->tablePrefix . 'tags_new');
+        $tableTmpTags->addColumn('id', 'integer', [
+            'autoincrement' => true,
+        ]);
+
+        $tableTmpTags->addColumn('name', 'string', [
+            'length'  => 48,
+            'notnull' => false,
+            'fixed'   => true
+        ]);
+
+        $tableTmpTags->addColumn('dateAdded', 'datetime');
+        $tableTmpTags->addUniqueIndex(['name']);
+        $tableTmpTags->setPrimaryKey(['id']);
+
+        $tableTmpFileTags = $schema->createTable($this->tablePrefix . 'file_tags_new');
+        $tableTmpFileTags->addColumn('file_id', 'integer');
+        $tableTmpFileTags->addColumn('tag_id', 'integer');
+
+        $tableTmpFileTags->setPrimaryKey(['file_id', 'tag_id']);
     }
 
     /**
@@ -259,9 +295,8 @@ class Version20170507160526 extends BaseMigration
         // Tags
         //
         $table = $schema->createTable($this->tablePrefix . 'tags');
-        $table->addColumn('id', 'string', [
-            'length' => 36,
-            'fixed'  => true
+        $table->addColumn('id', 'integer', [
+            'autoincrement' => true,
         ]);
 
         $table->addColumn('name', 'string', [
@@ -275,14 +310,8 @@ class Version20170507160526 extends BaseMigration
 
 
         $middleTable = $schema->createTable($this->tablePrefix . 'file_tags');
-        $middleTable->addColumn('file_id', 'string', [
-            'length' => 36,
-            'fixed'  => true
-        ]);
-        $middleTable->addColumn('tag_id', 'string', [
-            'length' => 36,
-            'fixed'  => true
-        ]);
+        $middleTable->addColumn('file_id', 'integer');
+        $middleTable->addColumn('tag_id', 'integer');
 
         $middleTable->setPrimaryKey(['file_id', 'tag_id']);
     }

@@ -12,7 +12,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 class Tag
 {
     /**
-     * @var string $id UUID
+     * @var int
      */
     private $id;
 
@@ -54,7 +54,7 @@ class Tag
     }
 
     /**
-     * @return string
+     * @return int
      */
     public function getId()
     {
@@ -63,31 +63,37 @@ class Tag
 
     /**
      * @param string $name
+     *
      * @return Tag
      */
     public function setName(string $name): Tag
     {
         $this->name = $name;
+
         return $this;
     }
 
     /**
      * @param \DateTime $dateAdded
+     *
      * @return Tag
      */
     public function setDateAdded(DateTime $dateAdded): Tag
     {
         $this->dateAdded = $dateAdded;
+
         return $this;
     }
 
     /**
-     * @param string $id
+     * @param int $id
+     *
      * @return Tag
      */
-    public function setId(string $id): Tag
+    public function setId(int $id): Tag
     {
         $this->id = $id;
+
         return $this;
     }
 
@@ -101,6 +107,7 @@ class Tag
 
     /**
      * @param File $file
+     *
      * @return Tag
      */
     public function addFile(File $file): Tag
@@ -111,6 +118,7 @@ class Tag
 
         $this->files->add($file);
         $file->addTag($this);
+
         return $this;
     }
 }
