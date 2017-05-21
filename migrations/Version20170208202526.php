@@ -11,6 +11,9 @@ class Version20170208202526 extends BaseMigration
      */
     public function up(Schema $schema)
     {
+        $skipIf = !$schema->hasTable($this->tablePrefix . 'tags') && !$schema->hasTable($this->tablePrefix . 'file_tags');
+        $this->skipIf($skipIf, 'Migration skipped for new installation');
+
         $table = $schema->createTable($this->tablePrefix . 'tags');
         $table->addColumn('id', 'string', [
             'length' => 36,

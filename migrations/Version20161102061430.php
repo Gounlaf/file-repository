@@ -11,6 +11,9 @@ class Version20161102061430 extends BaseMigration
      */
     public function up(Schema $schema)
     {
+        $this->skipIf(!$schema->hasTable($this->tablePrefix . 'file_registry'),
+            'Migration skipped for new installation');
+
         $table = $schema->createTable($this->tablePrefix . 'file_registry');
         $table->addColumn('id', 'integer', [
             'autoincrement' => true,

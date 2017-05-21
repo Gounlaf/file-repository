@@ -11,6 +11,8 @@ class Version20170203193950 extends BaseMigration
      */
     public function up(Schema $schema)
     {
+        $this->skipIf(!$schema->hasTable($this->tablePrefix . 'tokens'), 'Migration skipped for new installation');
+
         $table = $schema->createTable($this->tablePrefix . 'tokens');
 
         $table->addColumn('id', 'string', [
